@@ -9,5 +9,6 @@ optimizer:
 metrics: ["SPARSE_CAT_ACCURACY"]
 batch_size: 2
 epochs: 30
+shape_format: "channels_last"
 input_shape: [112, 112, 3]
 weights: ""
