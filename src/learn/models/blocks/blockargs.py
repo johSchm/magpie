@@ -1,10 +1,25 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+""" -------------------------------------------
+@author:     Johann Schmidt
+@date:       2020
+@refs:
+@todo:
+@bug:
+@brief:     Contains tools to create universal blocks for ML models.
+------------------------------------------- """
+
 
 import re
 
 
 class BlockArgs(object):
+    """ Block arguments.
+    """
 
-    def __init__(self, input_filters=None,
+    def __init__(self,
+                 input_filters=None,
                  output_filters=None,
                  kernel_size=None,
                  strides=None,
@@ -12,10 +27,20 @@ class BlockArgs(object):
                  se_ratio=None,
                  expand_ratio=None,
                  identity_skip=True):
-
+        """
+        Args:
+            input_filters:
+            output_filters:
+            kernel_size:
+            strides:
+            num_repeat:
+            se_ratio:
+            expand_ratio:
+            identity_skip:
+        """
         self.input_filters = input_filters
         self.output_filters = output_filters
-        self.kernel_size=kernel_size
+        self.kernel_size = kernel_size
         self.strides = strides
         self.num_repeat = num_repeat
         self.se_ratio = se_ratio
@@ -23,7 +48,14 @@ class BlockArgs(object):
         self.identity_skip = identity_skip
 
     def decode_block_string(self, block_string):
-        """Gets a block through a string notation of arguments."""
+        """ Gets a block through a string notation of arguments.
+
+        Args:
+            block_string (str):
+
+        Returns:
+            self (self): self.
+        """
         assert isinstance(block_string, str)
         ops = block_string.split('_')
         options = {}
@@ -47,7 +79,8 @@ class BlockArgs(object):
 
         return self
 
-    def encode_block_string(self, block):
+    @staticmethod
+    def encode_block_string(block):
         """Encodes a block to a string.
 
         Encoding Schema:
@@ -70,7 +103,7 @@ class BlockArgs(object):
             'o%d' % block.output_filters
         ]
 
-        if block.se_ratio > 0 and block.se_ratio <= 1:
+        if 0 < block.se_ratio <= 1:
             args.append('se%s' % block.se_ratio)
 
         if block.identity_skip is False:
