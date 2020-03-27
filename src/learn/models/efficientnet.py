@@ -23,6 +23,23 @@ from tensorflow.keras.layers import \
 import learn.models.root_model as model
 import learn.models.model_utils as utils
 import learn.models.layers.convbn as cb
+from enum import Enum
+
+
+class VersionID(Enum):
+    """ Versions of the EfficientNet `BX`, where `BX` refers to the version ID.
+    """
+    RAW = -1
+    DEFAULT = 0
+    LATEST = 7
+    B0 = 0
+    B1 = 1
+    B2 = 2
+    B3 = 3
+    B4 = 4
+    B5 = 5
+    B6 = 6
+    B7 = 7
 
 
 class EfficientNet(model.Model):
