@@ -26,6 +26,7 @@ import learn.models.layers.convbn as cb
 from enum import Enum
 
 
+
 class VersionID(Enum):
     """ Versions of the EfficientNet `BX`, where `BX` refers to the version ID.
     """
@@ -41,6 +42,185 @@ class VersionID(Enum):
     B6 = 6
     B7 = 7
 
+
+def efficientnet_factory(
+        input_shape: list,
+        output_shape: list,
+        id=VersionID.LATEST,
+        weight_links=None,
+        optimizer=utils.Optimizer.ADADELTA,
+        loss=utils.Loss.SPARSE_CAT_CROSS_ENTROPY,
+        metrics=utils.Metrics.SPARSE_CAT_ACCURACY,
+        normalization=utils.Normalizations.BATCH_NORM,
+        log_path=None,
+        ckpt_path=None,
+        parallel=False,
+        layer_prefix="",
+        load_weights_after_logits=True):
+    """ Init. method.
+
+    Args:
+        load_weights_after_logits (bool): Load the weights after adding the logits.
+        layer_prefix (str): Add this prefix to ALL layer names.
+        weight_links (dict): This dictionary contains the link to the weights.
+        input_shape (list): Input shape of the input data (W x H x D).
+        output_shape (list): The output shape for the output data.
+        optimizer (utils.Optimizer): The optimizer.
+        loss (utils.Loss): The loss.
+        metrics (utils.Metrics): The evaluation metric or metrics.
+        normalization (utils.Normalizations): The normalization method.
+        parallel (bool): Enable GPU parallelism.
+        log_path (str): The path to the desired log directory.
+        ckpt_path (str): The path to the checkpoint directory.
+        id (VersionID): The version ID of the model.
+
+    Returns:
+        model (EfficientNet): The configured model.
+    """
+    setup_dict = {}
+    if id == VersionID.B0 or id == VersionID.B0.value:
+        setup_dict = {}
+
+    return EfficientNet(
+        input_shape=input_shape,
+        output_shape=output_shape,
+        weight_links=weight_links,
+        optimizer=optimizer,
+        loss=loss.metrics,
+        normalization=normalization,
+        log_path=log_path,
+        ckpt_path=ckpt_path,
+        parallel=parallel,
+        layer_prefix=layer_prefix,
+        load_weights_after_logits=load_weights_after_logits,
+        kwargs=setup_dict)
+
+
+# Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
+def SEBlock(input_filters, se_ratio, expand_ratio, data_format=None):
+    if data_format is None:
+        data_format = K.image_data_format()
+
+    num_reduced_filters = max(
+        1, int(input_filters * se_ratio))
+    filters = input_filters * expand_ratio
+
+    if data_format == 'channels_first':
+        channel_axis = 1
+        spatial_dims = [2, 3]
+    else:
+        channel_axis = -1
+        spatial_dims = [1, 2]
+
+    def block(inputs):
+        x = inputs
+        x = layers.Lambda(lambda a: K.mean(a, axis=spatial_dims, keepdims=True))(x)
+        x = layers.Conv2D(
+            num_reduced_filters,
+            kernel_size=[1, 1],
+            strides=[1, 1],
+            kernel_initializer=EfficientNetConvInitializer(),
+            padding='same',
+            use_bias=True)(x)
+        x = Swish()(x)
+        # Excite
+        x = layers.Conv2D(
+            filters,
+            kernel_size=[1, 1],
+            strides=[1, 1],
+            kernel_initializer=EfficientNetConvInitializer(),
+            padding='same',
+            use_bias=True)(x)
+        x = layers.Activation('sigmoid')(x)
+        out = layers.Multiply()([x, inputs])
+        return out
+
+    return block
+
+
+# Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
+def MBConvBlock(input_filters, output_filters,
+                kernel_size, strides,
+                expand_ratio, se_ratio,
+                id_skip, drop_connect_rate,
+                batch_norm_momentum=0.99,
+                batch_norm_epsilon=1e-3,
+                data_format=None):
+
+    if data_format is None:
+        data_format = K.image_data_format()
+
+    if data_format == 'channels_first':
+        channel_axis = 1
+        spatial_dims = [2, 3]
+    else:
+        channel_axis = -1
+        spatial_dims = [1, 2]
+
+    has_se = (se_ratio is not None) and (se_ratio > 0) and (se_ratio <= 1)
+    filters = input_filters * expand_ratio
+
+    def block(inputs):
+
+        if expand_ratio != 1:
+            x = layers.Conv2D(
+                filters,
+                kernel_size=[1, 1],
+                strides=[1, 1],
+                kernel_initializer=EfficientNetConvInitializer(),
+                padding='same',
+                use_bias=False)(inputs)
+            x = layers.BatchNormalization(
+                axis=channel_axis,
+                momentum=batch_norm_momentum,
+                epsilon=batch_norm_epsilon)(x)
+            x = Swish()(x)
+        else:
+            x = inputs
+
+        x = layers.DepthwiseConv2D(
+            [kernel_size, kernel_size],
+            strides=strides,
+            depthwise_initializer=EfficientNetConvInitializer(),
+            padding='same',
+            use_bias=False)(x)
+        x = layers.BatchNormalization(
+            axis=channel_axis,
+            momentum=batch_norm_momentum,
+            epsilon=batch_norm_epsilon)(x)
+        x = Swish()(x)
+
+        if has_se:
+            x = SEBlock(input_filters, se_ratio, expand_ratio,
+                        data_format)(x)
+
+        # output phase
+
+        x = layers.Conv2D(
+            output_filters,
+            kernel_size=[1, 1],
+            strides=[1, 1],
+            kernel_initializer=EfficientNetConvInitializer(),
+            padding='same',
+            use_bias=False)(x)
+        x = layers.BatchNormalization(
+            axis=channel_axis,
+            momentum=batch_norm_momentum,
+            epsilon=batch_norm_epsilon)(x)
+
+        if id_skip:
+            if all(s == 1 for s in strides) and (
+                    input_filters == output_filters):
+
+                # only apply drop_connect if skip presents.
+                if drop_connect_rate:
+                    x = DropConnect(drop_connect_rate)(x)
+
+                x = layers.Add()([x, inputs])
+
+        return x
+
+    return block
 
 class EfficientNet(model.Model):
     """ Efficient Net.
@@ -60,7 +240,8 @@ class EfficientNet(model.Model):
                  ckpt_path=None,
                  parallel=False,
                  layer_prefix="",
-                 load_weights_after_logits=True):
+                 load_weights_after_logits=True,
+                 **kwargs):
         """ Init. method.
 
         Args:
@@ -76,14 +257,17 @@ class EfficientNet(model.Model):
             parallel (bool): Enable GPU parallelism.
             log_path (str): The path to the desired log directory.
             ckpt_path (str): The path to the checkpoint directory.
-        """
-        super().__init__(input_shape=input_shape, output_shape=output_shape,
-                         parallel=parallel, ckpt_path=ckpt_path, log_path=log_path)
 
-        if type(input_shape) is dict:
-            self.__input_shape = input_shape["RGB"]
-        else:
-            self.__input_shape = input_shape
+        Keyword Args:
+
+        """
+        super().__init__(
+            input_shape=input_shape,
+            output_shape=output_shape,
+            parallel=parallel,
+            ckpt_path=ckpt_path,
+            log_path=log_path)
+
         self._layer_prefix = layer_prefix
         self._optimizer = optimizer
         self._metrics = metrics
@@ -110,332 +294,128 @@ class EfficientNet(model.Model):
         Returns:
             None: None
         """
-        include_top = False  # refers to num of classes, disable if diff num of classes then pre-train
-        endpoint_logit = True
-        end_points = {}
 
-        tf.keras.backend.set_image_data_format('channels_last')
-        if tf.keras.backend.image_data_format() == 'channels_first':
-            concat_axis = 1
+        if data_format is None:
+            data_format = K.image_data_format()
+
+        channel_axis = 1 if self.shape_format == 'channels_first' else -1
+
+        if block_args_list is None:
+            block_args_list = get_default_block_list()
+        # count number of strides to compute min size
+        stride_count = 1
+        for block_args in block_args_list:
+            if block_args.strides is not None and block_args.strides[0] > 1:
+                stride_count += 1
+
+        min_size = int(2 ** stride_count)
+
+        # Determine proper input shape and default size.
+        input_shape = _obtain_input_shape(input_shape,
+                                          default_size=default_size,
+                                          min_size=min_size,
+                                          data_format=data_format,
+                                          require_flatten=include_top,
+                                          weights=weights)
+
+        # Stem part
+        if input_tensor is None:
+            inputs = layers.Input(shape=input_shape)
         else:
-            concat_axis = 4
+            if not K.is_keras_tensor(input_tensor):
+                inputs = layers.Input(tensor=input_tensor, shape=input_shape)
+            else:
+                inputs = input_tensor
 
-        _input = Input(
-            shape=self.__input_shape, dtype='float32', name=self._layer_prefix+'input')
+        x = inputs
+        x = layers.Conv2D(
+            filters=round_filters(32, width_coefficient,
+                                  depth_divisor, min_depth),
+            kernel_size=[3, 3],
+            strides=[2, 2],
+            kernel_initializer=EfficientNetConvInitializer(),
+            padding='same',
+            use_bias=False)(x)
+        x = layers.BatchNormalization(
+            axis=channel_axis,
+            momentum=batch_norm_momentum,
+            epsilon=batch_norm_epsilon)(x)
+        x = Swish()(x)
 
-        # ===========================================================================================
+        num_blocks = sum([block_args.num_repeat for block_args in block_args_list])
+        drop_connect_rate_per_block = drop_connect_rate / float(num_blocks)
 
-        # Downsampling via convolution (spatial and temporal)
-        end_point = self._layer_prefix + 'Conv3d_1a_7x7'
-        net = cb.conv3d_bn(_input, 64, 7, 7, 7, strides=(2, 2, 2), padding='same', name=end_point)
-        end_points[end_point] = net
+        # Blocks part
+        for block_idx, block_args in enumerate(block_args_list):
+            assert block_args.num_repeat > 0
 
-        # Downsampling (spatial only)
-        end_point = self._layer_prefix + 'MaxPool3d_2a_3x3'
-        net = MaxPooling3D(pool_size=(1, 3, 3), strides=(1, 2, 2), padding='same', name=end_point)(net)
-        end_points[end_point] = net
-        end_point = self._layer_prefix + 'Conv3d_2b_1x1'
-        net = cb.conv3d_bn(net, 64, 1, 1, 1, strides=(1, 1, 1), padding='same', name=end_point)
-        end_points[end_point] = net
-        end_point = self._layer_prefix + 'Conv3d_2c_3x3'
-        net = cb.conv3d_bn(net, 192, 3, 3, 3, strides=(1, 1, 1), padding='same', name=end_point)
-        end_points[end_point] = net
+            # Update block input and output filters based on depth multiplier.
+            block_args.input_filters = round_filters(block_args.input_filters, width_coefficient, depth_divisor,
+                                                     min_depth)
+            block_args.output_filters = round_filters(block_args.output_filters, width_coefficient, depth_divisor,
+                                                      min_depth)
+            block_args.num_repeat = round_repeats(block_args.num_repeat, depth_coefficient)
 
-        # Downsampling (spatial only)
-        end_point = self._layer_prefix + 'MaxPool3d_3a_3x3'
-        net = MaxPooling3D(pool_size=(1, 3, 3), strides=(1, 2, 2), padding='same', name=end_point)(net)
-        end_points[end_point] = net
+            # The first block needs to take care of stride and filter size increase.
+            x = MBConvBlock(block_args.input_filters, block_args.output_filters,
+                            block_args.kernel_size, block_args.strides,
+                            block_args.expand_ratio, block_args.se_ratio,
+                            block_args.identity_skip, drop_connect_rate_per_block * block_idx,
+                            batch_norm_momentum, batch_norm_epsilon, data_format)(x)
 
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Mixed_3b'
+            if block_args.num_repeat > 1:
+                block_args.input_filters = block_args.output_filters
+                block_args.strides = [1, 1]
 
-        branch = '_Branch_0'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_0 = cb.conv3d_bn(net, 64, 1, 1, 1, padding='same', name=name)
+            for _ in range(block_args.num_repeat - 1):
+                x = MBConvBlock(block_args.input_filters, block_args.output_filters,
+                                block_args.kernel_size, block_args.strides,
+                                block_args.expand_ratio, block_args.se_ratio,
+                                block_args.identity_skip, drop_connect_rate_per_block * block_idx,
+                                batch_norm_momentum, batch_norm_epsilon, data_format)(x)
 
-        branch = 'Branch_1'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_1 = cb.conv3d_bn(net, 96, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_1 = cb.conv3d_bn(branch_1, 128, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_2'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_2 = cb.conv3d_bn(net, 16, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_2 = cb.conv3d_bn(branch_2, 32, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_3'
-        name = end_point + branch + '_MaxPool3d_0a_3x3'
-        branch_3 = MaxPooling3D(pool_size=(3, 3, 3), strides=(1, 1, 1), padding='same', name=name)(net)
-        name = end_point + branch + '_Conv3d_0b_1x1'
-        branch_3 = cb.conv3d_bn(branch_3, 32, 1, 1, 1, padding='same', name=name)
-
-        net = concatenate([branch_0, branch_1, branch_2, branch_3], axis=concat_axis, name=end_point)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Mixed_3c'
-
-        branch = 'Branch_0'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_0 = cb.conv3d_bn(net, 128, 1, 1, 1, padding='same', name=name)
-
-        branch = 'Branch_1'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_1 = cb.conv3d_bn(net, 128, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_1 = cb.conv3d_bn(branch_1, 192, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_2'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_2 = cb.conv3d_bn(net, 32, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_2 = cb.conv3d_bn(branch_2, 96, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_3'
-        name = end_point + branch + '_MaxPool3d_0a_3x3'
-        branch_3 = MaxPooling3D(pool_size=(3, 3, 3), strides=(1, 1, 1), padding='same', name=name)(net)
-        name = end_point + branch + '_Conv3d_0b_1x1'
-        branch_3 = cb.conv3d_bn(branch_3, 64, 1, 1, 1, padding='same', name=name)
-
-        net = concatenate([branch_0, branch_1, branch_2, branch_3], axis=concat_axis, name=end_point)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-
-        end_point = self._layer_prefix + 'MaxPool3d_4a_3x3'
-        net = MaxPooling3D(pool_size=(3, 3, 3), strides=(2, 2, 2), padding='same', name=end_point)(net)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Mixed_4b'
-
-        branch = 'Branch_0'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_0 = cb.conv3d_bn(net, 192, 1, 1, 1, padding='same', name=name)
-
-        branch = 'Branch_1'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_1 = cb.conv3d_bn(net, 96, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_1 = cb.conv3d_bn(branch_1, 208, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_2'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_2 = cb.conv3d_bn(net, 16, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_2 = cb.conv3d_bn(branch_2, 48, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_3'
-        name = end_point + branch + '_MaxPool3d_0a_3x3'
-        branch_3 = MaxPooling3D(pool_size=(3, 3, 3), strides=(1, 1, 1), padding='same', name=name)(net)
-        name = end_point + branch + '_Conv3d_0b_1x1'
-        branch_3 = cb.conv3d_bn(branch_3, 64, 1, 1, 1, padding='same', name=name)
-
-        net = concatenate([branch_0, branch_1, branch_2, branch_3], axis=concat_axis, name=end_point)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Mixed_4c'
-
-        branch = 'Branch_0'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_0 = cb.conv3d_bn(net, 160, 1, 1, 1, padding='same', name=name)
-
-        branch = 'Branch_1'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_1 = cb.conv3d_bn(net, 112, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_1 = cb.conv3d_bn(branch_1, 224, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_2'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_2 = cb.conv3d_bn(net, 24, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_2 = cb.conv3d_bn(branch_2, 64, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_3'
-        name = end_point + branch + '_MaxPool3d_0a_3x3'
-        branch_3 = MaxPooling3D(pool_size=(3, 3, 3), strides=(1, 1, 1), padding='same', name=name)(net)
-        name = end_point + branch + '_Conv3d_0b_1x1'
-        branch_3 = cb.conv3d_bn(branch_3, 64, 1, 1, 1, padding='same', name=name)
-
-        net = concatenate([branch_0, branch_1, branch_2, branch_3], axis=concat_axis, name=end_point)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Mixed_4d'
-
-        branch = 'Branch_0'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_0 = cb.conv3d_bn(net, 128, 1, 1, 1, padding='same', name=name)
-
-        branch = 'Branch_1'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_1 = cb.conv3d_bn(net, 128, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_1 = cb.conv3d_bn(branch_1, 256, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_2'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_2 = cb.conv3d_bn(net, 24, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_2 = cb.conv3d_bn(branch_2, 64, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_3'
-        name = end_point + branch + '_MaxPool3d_0a_3x3'
-        branch_3 = MaxPooling3D(pool_size=(3, 3, 3), strides=(1, 1, 1), padding='same', name=name)(net)
-        name = end_point + branch + '_Conv3d_0b_1x1'
-        branch_3 = cb.conv3d_bn(branch_3, 64, 1, 1, 1, padding='same', name=name)
-
-        net = concatenate([branch_0, branch_1, branch_2, branch_3], axis=concat_axis, name=end_point)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Mixed_4e'
-
-        branch = 'Branch_0'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_0 = cb.conv3d_bn(net, 112, 1, 1, 1, padding='same', name=name)
-
-        branch = 'Branch_1'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_1 = cb.conv3d_bn(net, 144, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_1 = cb.conv3d_bn(branch_1, 288, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_2'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_2 = cb.conv3d_bn(net, 32, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_2 = cb.conv3d_bn(branch_2, 64, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_3'
-        name = end_point + branch + '_MaxPool3d_0a_3x3'
-        branch_3 = MaxPooling3D(pool_size=(3, 3, 3), strides=(1, 1, 1), padding='same', name=name)(net)
-        name = end_point + branch + '_Conv3d_0b_1x1'
-        branch_3 = cb.conv3d_bn(branch_3, 64, 1, 1, 1, padding='same', name=name)
-
-        net = concatenate([branch_0, branch_1, branch_2, branch_3], axis=concat_axis, name=end_point)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Mixed_4f'
-
-        branch = 'Branch_0'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_0 = cb.conv3d_bn(net, 256, 1, 1, 1, padding='same', name=name)
-
-        branch = 'Branch_1'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_1 = cb.conv3d_bn(net, 160, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_1 = cb.conv3d_bn(branch_1, 320, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_2'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_2 = cb.conv3d_bn(net, 32, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_2 = cb.conv3d_bn(branch_2, 128, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_3'
-        name = end_point + branch + '_MaxPool3d_0a_3x3'
-        branch_3 = MaxPooling3D(pool_size=(3, 3, 3), strides=(1, 1, 1), padding='same', name=name)(net)
-        name = end_point + branch + '_Conv3d_0b_1x1'
-        branch_3 = cb.conv3d_bn(branch_3, 128, 1, 1, 1, padding='same', name=name)
-
-        net = concatenate([branch_0, branch_1, branch_2, branch_3], axis=concat_axis, name=end_point)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'MaxPool3d_5a_2x2'
-        net = MaxPooling3D(pool_size=(2, 2, 2), strides=(2, 2, 2), padding='same', name=end_point)(net)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Mixed_5b'
-
-        branch = 'Branch_0'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_0 = cb.conv3d_bn(net, 256, 1, 1, 1, padding='same', name=name)
-
-        branch = 'Branch_1'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_1 = cb.conv3d_bn(net, 160, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_1 = cb.conv3d_bn(branch_1, 320, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_2'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_2 = cb.conv3d_bn(net, 32, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_2 = cb.conv3d_bn(branch_2, 128, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_3'
-        name = end_point + branch + '_MaxPool3d_0a_3x3'
-        branch_3 = MaxPooling3D(pool_size=(3, 3, 3), strides=(1, 1, 1), padding='same', name=name)(net)
-        name = end_point + branch + '_Conv3d_0b_1x1'
-        branch_3 = cb.conv3d_bn(branch_3, 128, 1, 1, 1, padding='same', name=name)
-
-        net = concatenate([branch_0, branch_1, branch_2, branch_3], axis=concat_axis, name=end_point)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Mixed_5c'
-
-        branch = 'Branch_0'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_0 = cb.conv3d_bn(net, 384, 1, 1, 1, padding='same', name=name)
-
-        branch = 'Branch_1'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_1 = cb.conv3d_bn(net, 192, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_1 = cb.conv3d_bn(branch_1, 384, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_2'
-        name = end_point + branch + '_Conv3d_0a_1x1'
-        branch_2 = cb.conv3d_bn(net, 48, 1, 1, 1, padding='same', name=name)
-        name = end_point + branch + '_Conv3d_0b_3x3'
-        branch_2 = cb.conv3d_bn(branch_2, 128, 3, 3, 3, padding='same', name=name)
-
-        branch = 'Branch_3'
-        name = end_point + branch + '_MaxPool3d_0a_3x3'
-        branch_3 = MaxPooling3D(pool_size=(3, 3, 3), strides=(1, 1, 1), padding='same', name=name)(net)
-        name = end_point + branch + '_Conv3d_0b_1x1'
-        branch_3 = cb.conv3d_bn(branch_3, 128, 1, 1, 1, padding='same', name=name)
-
-        net = concatenate([branch_0, branch_1, branch_2, branch_3], axis=concat_axis, name=end_point)
-        end_points[end_point] = net
-
-        # ===========================================================================================
-        end_point = self._layer_prefix + 'Logits'
+        # Head part
+        x = layers.Conv2D(
+            filters=round_filters(1280, width_coefficient, depth_coefficient, min_depth),
+            kernel_size=[1, 1],
+            strides=[1, 1],
+            kernel_initializer=EfficientNetConvInitializer(),
+            padding='same',
+            use_bias=False)(x)
+        x = layers.BatchNormalization(
+            axis=channel_axis,
+            momentum=batch_norm_momentum,
+            epsilon=batch_norm_epsilon)(x)
+        x = Swish()(x)
 
         if include_top:
-            net = AveragePooling3D(pool_size=(2, 7, 7), strides=(1, 1, 1),
-                                   padding='valid', name=end_point+'_global_avg_pool')(net)
-            net = Dropout(0.5)(net)
-            net = cb.conv3d_bn(net, self._num_classes, 1, 1, 1, padding='same',
-                               use_bias=True, use_activation_fn=False, use_bn=False,
-                               name=end_point+'_Conv3d_6a_1x1')
+            x = layers.GlobalAveragePooling2D(data_format=data_format)(x)
 
-            num_frames_remaining = int(net.shape[1])
-            net = Reshape((num_frames_remaining, self._num_classes))(net)
+            if dropout_rate > 0:
+                x = layers.Dropout(dropout_rate)(x)
 
-            # net (raw scores for each class)
-            net = Lambda(lambda net: K.mean(net, axis=1, keepdims=False),
-                         output_shape=lambda s: (s[0], s[2]))(net)
+            x = layers.Dense(classes, kernel_initializer=EfficientNetDenseInitializer())(x)
+            x = layers.Activation('softmax')(x)
 
-            if not endpoint_logit:
-                net = Activation('softmax', name=end_point+'_prediction')(net)
         else:
-            h = int(net.shape[2])
-            w = int(net.shape[3])
-            net = AveragePooling3D((2, h, w), strides=(1, 1, 1),
-                                   padding='valid', name=end_point+'_global_avg_pool')(net)
+            if pooling == 'avg':
+                x = layers.GlobalAveragePooling2D()(x)
+            elif pooling == 'max':
+                x = layers.GlobalMaxPooling2D()(x)
 
-        return _input, net
+        outputs = x
+
+        # Ensure that the models takes into account
+        # any potential predecessors of `input_tensor`.
+        if input_tensor is not None:
+            inputs = get_source_inputs(input_tensor)
+
+        model = Model(inputs, outputs)
+
+        elif weights is not None:
+            model.load_weights(weights)
+
+        return model
 
     def _build_ff_model(self):
         """ Builds a feed forward learn.

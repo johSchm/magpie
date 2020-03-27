@@ -15,7 +15,7 @@ import learn.models.video.mcvc as mcvc
 import learn.models.video.c3d as c3d
 import learn.models.video.td_vgg as td_vgg
 import data.sample as sample
-import learn.model_utils as utils
+import learn.utils.utils as utils
 import learn.models.video.ts2d as two_stream
 import learn.models.video.i3d as i3d
 import learn.models.video.stlstm as stlstm

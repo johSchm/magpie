@@ -24,7 +24,7 @@ from tensorflow.compat.v1 import GraphDef
 from tensorflow.compat.v1 import Session
 from tensorflow.keras.layers import BatchNormalization
 import os
-import learn.model_utils as utils
+import learn.utils.utils as utils
 import learn.log as log
 import utils.path_utils as path_utils
 import data.data_utils as data_utils
@@ -78,8 +78,13 @@ class Model:
             experimental_run_tf_function=False)
 
     def _load_weights(self, weight_links):
-        """ Loads pretrained weights from the path.
-        :param weight_links:
+        """ Loads pre-trained weights from the path.
+        Args:
+            weight_links (dict):
+                {
+                    path (str): Path to weight file.
+                    http (str): Online link to weights for download.
+                }
         """
         if not os.path.isfile(weight_links['path']):
             utils.download_weights(weight_links)
