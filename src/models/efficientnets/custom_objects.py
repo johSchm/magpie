@@ -62,14 +62,7 @@ class EfficientNetDenseInitializer(initializers.Initializer):
 
 
 # Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
-class Swish(layers.Layer):
 
-    def __init__(self, **kwargs):
-        super(Swish, self).__init__(**kwargs)
-        self.supports_masking = True
-
-    def call(self, inputs, training=None):
-        return tf.nn.swish(inputs)
 
 
 # Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py

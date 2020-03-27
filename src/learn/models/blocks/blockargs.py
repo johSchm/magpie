@@ -4,7 +4,7 @@
 """ -------------------------------------------
 @author:     Johann Schmidt
 @date:       2020
-@refs:
+@refs:       https://github.com/titu1994/keras-efficientnets
 @todo:
 @bug:
 @brief:     Contains tools to create universal blocks for ML models.
