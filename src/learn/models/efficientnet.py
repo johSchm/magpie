@@ -4,9 +4,10 @@
 """ -------------------------------------------
 @author:     Johann Schmidt
 @date:       2020
-@refs:
+@refs:       https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
 @todo:
 @bug:
+@brief:
 ------------------------------------------- """
 
 
@@ -24,7 +25,9 @@ import learn.models.root_model as model
 import learn.models.model_utils as utils
 import learn.models.layers.convbn as cb
 from enum import Enum
-
+import numpy as np
+import learn.models.blocks.blockargs as bargs
+from keras_applications.imagenet_utils import _obtain_input_shape
 
 
 class VersionID(Enum):
@@ -41,6 +44,68 @@ class VersionID(Enum):
     B5 = 5
     B6 = 6
     B7 = 7
+
+
+def get_width_coefficient(vid: VersionID) -> float:
+    """ Returns the width coefficient for the specific model version:
+
+    Args:
+        vid (VersionID): Version ID.
+
+    Return:
+        width coefficient: float
+    """
+    if type(vid) == VersionID:
+        vid = vid.value
+    if vid == VersionID.B0:
+        return 1.0
+    elif vid == VersionID.B1:
+        return 1.0
+    elif vid == VersionID.B2:
+        return 1.1
+    elif vid == VersionID.B3:
+        return 1.2
+    elif vid == VersionID.B4:
+        return 1.4
+    elif vid == VersionID.B5:
+        return 1.6
+    elif vid == VersionID.B6:
+        return 1.8
+    elif vid == VersionID.B7:
+        return 2.0
+    else:
+        raise ValueError("`vid` has to be from type `VersionID` or a number, which fits `VersionID`.")
+
+
+def get_depth_coefficient(vid: VersionID) -> float:
+    """ Returns the depth coefficient for the specific model version:
+
+    Args:
+        vid (VersionID): Version ID.
+
+    Return:
+        depth coefficient: float
+    """
+    if type(vid) == VersionID:
+        vid = vid.value
+    if vid == VersionID.B0:
+        return 1.0
+    elif vid == VersionID.B1:
+        return 1.1
+    elif vid == VersionID.B2:
+        return 1.2
+    elif vid == VersionID.B3:
+        return 1.4
+    elif vid == VersionID.B4:
+        return 1.8
+    elif vid == VersionID.B5:
+        return 2.2
+    elif vid == VersionID.B6:
+        return 2.6
+    elif vid == VersionID.B7:
+        return 3.1
+    else:
+        raise ValueError("`vid` has to be from type `VersionID` or a number, which fits `VersionID`.")
 
 
 def efficientnet_factory(
@@ -73,6 +138,7 @@ def efficientnet_factory(
         log_path (str): The path to the desired log directory.
         ckpt_path (str): The path to the checkpoint directory.
         id (VersionID): The version ID of the model.
+        shape_format (list): The shape format.
 
     Returns:
         model (EfficientNet): The configured model.
@@ -96,90 +162,59 @@ def efficientnet_factory(
         kwargs=setup_dict)
 
 
+class EfficientNetConvInitializer(tf.keras.initializers.Initializer):
+    """Initialization for convolutional kernels.
+    The main difference with tf.variance_scaling_initializer is that
+    tf.variance_scaling_initializer uses a truncated normal with an uncorrected
+    standard deviation, whereas base_path we use a normal distribution. Similarly,
+    tf.contrib.layers.variance_scaling_initializer uses a truncated normal with
+    a corrected standard deviation.
 
-# Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
-def MBConvBlock(input_filters, output_filters,
-                kernel_size, strides,
-                expand_ratio, se_ratio,
-                id_skip, drop_connect_rate,
-                batch_norm_momentum=0.99,
-                batch_norm_epsilon=1e-3,
-                data_format=None):
+    # Arguments:
+      shape: shape of variable
+      dtype: dtype of variable
+      partition_info: unused
 
-    if data_format is None:
-        data_format = K.image_data_format()
+    # Returns:
+      an initialization for the variable
+    """
+    def __init__(self):
+        super(EfficientNetConvInitializer, self).__init__()
 
-    if data_format == 'channels_first':
-        channel_axis = 1
-        spatial_dims = [2, 3]
-    else:
-        channel_axis = -1
-        spatial_dims = [1, 2]
+    def __call__(self, shape, dtype=None):
+        dtype = dtype or K.floatx()
 
-    has_se = (se_ratio is not None) and (se_ratio > 0) and (se_ratio <= 1)
-    filters = input_filters * expand_ratio
+        kernel_height, kernel_width, _, out_filters = shape
+        fan_out = int(kernel_height * kernel_width * out_filters)
+        return K.random_normal(
+            shape, mean=0.0, stddev=np.sqrt(2.0 / fan_out), dtype=dtype)
 
-    def block(inputs):
 
-        if expand_ratio != 1:
-            x = layers.Conv2D(
-                filters,
-                kernel_size=[1, 1],
-                strides=[1, 1],
-                kernel_initializer=EfficientNetConvInitializer(),
-                padding='same',
-                use_bias=False)(inputs)
-            x = layers.BatchNormalization(
-                axis=channel_axis,
-                momentum=batch_norm_momentum,
-                epsilon=batch_norm_epsilon)(x)
-            x = Swish()(x)
-        else:
-            x = inputs
+class EfficientNetDenseInitializer(tf.keras.initializers.Initializer):
+    """Initialization for dense kernels.
+        This initialization is equal to
+          tf.variance_scaling_initializer(scale=1.0/3.0, mode='fan_out',
+                                          distribution='uniform').
+        It is written out explicitly base_path for clarity.
 
-        x = layers.DepthwiseConv2D(
-            [kernel_size, kernel_size],
-            strides=strides,
-            depthwise_initializer=EfficientNetConvInitializer(),
-            padding='same',
-            use_bias=False)(x)
-        x = layers.BatchNormalization(
-            axis=channel_axis,
-            momentum=batch_norm_momentum,
-            epsilon=batch_norm_epsilon)(x)
-        x = Swish()(x)
+        # Arguments:
+          shape: shape of variable
+          dtype: dtype of variable
+          partition_info: unused
 
-        if has_se:
-            x = SEBlock(input_filters, se_ratio, expand_ratio,
-                        data_format)(x)
+        # Returns:
+          an initialization for the variable
+    """
+    def __init__(self):
+        super(EfficientNetDenseInitializer, self).__init__()
 
-        # output phase
+    def __call__(self, shape, dtype=None):
+        dtype = dtype or tf.keras.backend.floatx()
 
-        x = layers.Conv2D(
-            output_filters,
-            kernel_size=[1, 1],
-            strides=[1, 1],
-            kernel_initializer=EfficientNetConvInitializer(),
-            padding='same',
-            use_bias=False)(x)
-        x = layers.BatchNormalization(
-            axis=channel_axis,
-            momentum=batch_norm_momentum,
-            epsilon=batch_norm_epsilon)(x)
+        init_range = 1.0 / np.sqrt(shape[1])
+        return tf.keras.backend.random_uniform(shape, -init_range, init_range, dtype=dtype)
 
-        if id_skip:
-            if all(s == 1 for s in strides) and (
-                    input_filters == output_filters):
 
-                # only apply drop_connect if skip presents.
-                if drop_connect_rate:
-                    x = DropConnect(drop_connect_rate)(x)
-
-                x = layers.Add()([x, inputs])
-
-        return x
-
-    return block
 
 class EfficientNet(model.Model):
     """ Efficient Net.
@@ -197,13 +232,14 @@ class EfficientNet(model.Model):
                  normalization=utils.Normalizations.BATCH_NORM,
                  log_path=None,
                  ckpt_path=None,
-                 parallel=False,
                  layer_prefix="",
+                 data_format=None,
                  load_weights_after_logits=True,
                  **kwargs):
         """ Init. method.
 
         Args:
+            data_format (list): The format of the image shape.
             load_weights_after_logits (bool): Load the weights after adding the logits.
             layer_prefix (str): Add this prefix to ALL layer names.
             weight_links (dict): This dictionary contains the link to the weights.
@@ -213,20 +249,25 @@ class EfficientNet(model.Model):
             loss (utils.Loss): The loss.
             metrics (utils.Metrics): The evaluation metric or metrics.
             normalization (utils.Normalizations): The normalization method.
-            parallel (bool): Enable GPU parallelism.
             log_path (str): The path to the desired log directory.
             ckpt_path (str): The path to the checkpoint directory.
 
         Keyword Args:
-
+            block_args (list): Block arguments.
         """
         super().__init__(
             input_shape=input_shape,
             output_shape=output_shape,
-            parallel=parallel,
             ckpt_path=ckpt_path,
             log_path=log_path)
 
+        if kwargs is not None:
+            if "block_args" in kwargs.keys():
+                self._block_args = None if kwargs["block_args"] is None else bargs.get_default_block_list()
+            if "width_coefficient" in kwargs.keys():
+                self._width_coefficient = 1.0
+        self._data_format = None if data_format is None else tf.keras.backend.image_data_format()
+        self._channel_axis = 1 if self._data_format == 'channels_first' else -1
         self._layer_prefix = layer_prefix
         self._optimizer = optimizer
         self._metrics = metrics
@@ -254,41 +295,19 @@ class EfficientNet(model.Model):
             None: None
         """
 
-        if data_format is None:
-            data_format = K.image_data_format()
-
-        channel_axis = 1 if self.shape_format == 'channels_first' else -1
-
-        if block_args_list is None:
-            block_args_list = get_default_block_list()
-        # count number of strides to compute min size
-        stride_count = 1
-        for block_args in block_args_list:
-            if block_args.strides is not None and block_args.strides[0] > 1:
-                stride_count += 1
-
-        min_size = int(2 ** stride_count)
-
-        # Determine proper input shape and default size.
-        input_shape = _obtain_input_shape(input_shape,
-                                          default_size=default_size,
-                                          min_size=min_size,
-                                          data_format=data_format,
-                                          require_flatten=include_top,
-                                          weights=weights)
-
         # Stem part
+        input_tensor = None
         if input_tensor is None:
-            inputs = layers.Input(shape=input_shape)
+            inputs = Input(shape=self._input_shape)
         else:
-            if not K.is_keras_tensor(input_tensor):
-                inputs = layers.Input(tensor=input_tensor, shape=input_shape)
+            if not tf.is_tensor(input_tensor):
+                inputs = Input(tensor=input_tensor, shape=self._input_shape)
             else:
                 inputs = input_tensor
 
         x = inputs
-        x = layers.Conv2D(
-            filters=round_filters(32, width_coefficient,
+        x = Conv2D(
+            filters=utils.round_filters(32, width_coefficient,
                                   depth_divisor, min_depth),
             kernel_size=[3, 3],
             strides=[2, 2],
