@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Contains definitions for EfficientNet model.
+"""Contains definitions for EfficientNet models.
 [1] Mingxing Tan, Quoc V. Le
   EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.
   ICML'19, https://arxiv.org/abs/1905.11946

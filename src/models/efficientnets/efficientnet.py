@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Contains definitions for EfficientNet model.
+"""Contains definitions for EfficientNet models.
 [1] Mingxing Tan, Quoc V. Le
   EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.
   ICML'19, https://arxiv.org/abs/1905.11946
@@ -228,7 +228,7 @@ def EfficientNet(input_shape,
                  default_size=None,
                  **kwargs):
     """
-    Builder model for EfficientNets.
+    Builder models for EfficientNets.
 
     # Arguments:
         input_shape: Optional shape tuple, the input shape
@@ -244,27 +244,27 @@ def EfficientNet(input_shape,
         width_coefficient: Determines the number of channels
             available per layer. Compound Coefficient that
             needs to be found using grid search on a base
-            configuration model.
+            configuration models.
         depth_coefficient: Determines the number of layers
-            available to the model. Compound Coefficient that
+            available to the models. Compound Coefficient that
             needs to be found using grid search on a base
-            configuration model.
+            configuration models.
         include_top: Whether to include the fully-connected
             layer at the top of the network.
         weights: `None` (random initialization) or
             `imagenet` (ImageNet weights)
         input_tensor: Optional Keras tensor (i.e. output of
             `layers.Input()`)
-            to use as image input for the model.
+            to use as image input for the models.
         pooling: Optional pooling mode for feature extraction
             when `include_top` is `False`.
-            - `None` means that the output of the model
+            - `None` means that the output of the models
                 will be the 4D tensor output of the
                 last convolutional layer.
             - `avg` means that global average pooling
                 will be applied to the output of the
                 last convolutional layer, and thus
-                the output of the model will be a
+                the output of the models will be a
                 2D tensor.
             - `max` means that global max pooling will
                 be applied.
@@ -284,7 +284,7 @@ def EfficientNet(input_shape,
             avoid blocks with 0 layers.
         data_format: "channels_first" or "channels_last". If left
             as None, defaults to the value set in ~/.keras.
-        default_size: Specifies the default image size of the model
+        default_size: Specifies the default image size of the models
 
     # Raises:
         - ValueError: If weights are not in 'imagenet' or None.
@@ -419,7 +419,7 @@ def EfficientNet(input_shape,
 
     outputs = x
 
-    # Ensure that the model takes into account
+    # Ensure that the models takes into account
     # any potential predecessors of `input_tensor`.
     if input_tensor is not None:
         inputs = get_source_inputs(input_tensor)
@@ -519,7 +519,7 @@ def EfficientNet(input_shape,
         #             'efficientnet-b6_notop.h5',
         #             "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b6_notop.h5",
         #             cache_subdir='models')
-        #     model.load_weights(weights_path)
+        #     models.load_weights(weights_path)
         #
         # elif default_size == 600:
         #     if include_top:
@@ -532,7 +532,7 @@ def EfficientNet(input_shape,
         #             'efficientnet-b7_notop.h5',
         #             "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b7_notop.h5",
         #             cache_subdir='models')
-        #     model.load_weights(weights_path)
+        #     models.load_weights(weights_path)
 
         else:
             raise ValueError('ImageNet weights can only be loaded with EfficientNetB0-5')
@@ -568,16 +568,16 @@ def EfficientNetB0(input_shape=None,
             `imagenet` (ImageNet weights)
         input_tensor: Optional Keras tensor (i.e. output of
             `layers.Input()`)
-            to use as image input for the model.
+            to use as image input for the models.
         pooling: Optional pooling mode for feature extraction
             when `include_top` is `False`.
-            - `None` means that the output of the model
+            - `None` means that the output of the models
                 will be the 4D tensor output of the
                 last convolutional layer.
             - `avg` means that global average pooling
                 will be applied to the output of the
                 last convolutional layer, and thus
-                the output of the model will be a
+                the output of the models will be a
                 2D tensor.
             - `max` means that global max pooling will
                 be applied.
@@ -638,16 +638,16 @@ def EfficientNetB1(input_shape=None,
             `imagenet` (ImageNet weights)
         input_tensor: Optional Keras tensor (i.e. output of
             `layers.Input()`)
-            to use as image input for the model.
+            to use as image input for the models.
         pooling: Optional pooling mode for feature extraction
             when `include_top` is `False`.
-            - `None` means that the output of the model
+            - `None` means that the output of the models
                 will be the 4D tensor output of the
                 last convolutional layer.
             - `avg` means that global average pooling
                 will be applied to the output of the
                 last convolutional layer, and thus
-                the output of the model will be a
+                the output of the models will be a
                 2D tensor.
             - `max` means that global max pooling will
                 be applied.
@@ -708,16 +708,16 @@ def EfficientNetB2(input_shape=None,
             `imagenet` (ImageNet weights)
         input_tensor: Optional Keras tensor (i.e. output of
             `layers.Input()`)
-            to use as image input for the model.
+            to use as image input for the models.
         pooling: Optional pooling mode for feature extraction
             when `include_top` is `False`.
-            - `None` means that the output of the model
+            - `None` means that the output of the models
                 will be the 4D tensor output of the
                 last convolutional layer.
             - `avg` means that global average pooling
                 will be applied to the output of the
                 last convolutional layer, and thus
-                the output of the model will be a
+                the output of the models will be a
                 2D tensor.
             - `max` means that global max pooling will
                 be applied.
@@ -778,16 +778,16 @@ def EfficientNetB3(input_shape=None,
             `imagenet` (ImageNet weights)
         input_tensor: Optional Keras tensor (i.e. output of
             `layers.Input()`)
-            to use as image input for the model.
+            to use as image input for the models.
         pooling: Optional pooling mode for feature extraction
             when `include_top` is `False`.
-            - `None` means that the output of the model
+            - `None` means that the output of the models
                 will be the 4D tensor output of the
                 last convolutional layer.
             - `avg` means that global average pooling
                 will be applied to the output of the
                 last convolutional layer, and thus
-                the output of the model will be a
+                the output of the models will be a
                 2D tensor.
             - `max` means that global max pooling will
                 be applied.
@@ -848,16 +848,16 @@ def EfficientNetB4(input_shape=None,
             `imagenet` (ImageNet weights)
         input_tensor: Optional Keras tensor (i.e. output of
             `layers.Input()`)
-            to use as image input for the model.
+            to use as image input for the models.
         pooling: Optional pooling mode for feature extraction
             when `include_top` is `False`.
-            - `None` means that the output of the model
+            - `None` means that the output of the models
                 will be the 4D tensor output of the
                 last convolutional layer.
             - `avg` means that global average pooling
                 will be applied to the output of the
                 last convolutional layer, and thus
-                the output of the model will be a
+                the output of the models will be a
                 2D tensor.
             - `max` means that global max pooling will
                 be applied.
@@ -918,16 +918,16 @@ def EfficientNetB5(input_shape=None,
             `imagenet` (ImageNet weights)
         input_tensor: Optional Keras tensor (i.e. output of
             `layers.Input()`)
-            to use as image input for the model.
+            to use as image input for the models.
         pooling: Optional pooling mode for feature extraction
             when `include_top` is `False`.
-            - `None` means that the output of the model
+            - `None` means that the output of the models
                 will be the 4D tensor output of the
                 last convolutional layer.
             - `avg` means that global average pooling
                 will be applied to the output of the
                 last convolutional layer, and thus
-                the output of the model will be a
+                the output of the models will be a
                 2D tensor.
             - `max` means that global max pooling will
                 be applied.
@@ -988,16 +988,16 @@ def EfficientNetB6(input_shape=None,
             `imagenet` (ImageNet weights)
         input_tensor: Optional Keras tensor (i.e. output of
             `layers.Input()`)
-            to use as image input for the model.
+            to use as image input for the models.
         pooling: Optional pooling mode for feature extraction
             when `include_top` is `False`.
-            - `None` means that the output of the model
+            - `None` means that the output of the models
                 will be the 4D tensor output of the
                 last convolutional layer.
             - `avg` means that global average pooling
                 will be applied to the output of the
                 last convolutional layer, and thus
-                the output of the model will be a
+                the output of the models will be a
                 2D tensor.
             - `max` means that global max pooling will
                 be applied.
@@ -1058,16 +1058,16 @@ def EfficientNetB7(input_shape=None,
             `imagenet` (ImageNet weights)
         input_tensor: Optional Keras tensor (i.e. output of
             `layers.Input()`)
-            to use as image input for the model.
+            to use as image input for the models.
         pooling: Optional pooling mode for feature extraction
             when `include_top` is `False`.
-            - `None` means that the output of the model
+            - `None` means that the output of the models
                 will be the 4D tensor output of the
                 last convolutional layer.
             - `avg` means that global average pooling
                 will be applied to the output of the
                 last convolutional layer, and thus
-                the output of the model will be a
+                the output of the models will be a
                 2D tensor.
             - `max` means that global max pooling will
                 be applied.
@@ -1116,7 +1116,7 @@ if __name__ == '__main__':
         model.summary()
 
     else:
-        raise FileNotFoundError("Keras model file not found !")
+        raise FileNotFoundError("Keras models file not found !")
 
     if os.path.exists('temp.h5'):
         os.remove('temp.h5')

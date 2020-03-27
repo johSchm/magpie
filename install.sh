@@ -1,0 +1,1 @@
+sudo -H venv/bin/python -m pip install --upgrade tensorflow --ignore-installed --user
