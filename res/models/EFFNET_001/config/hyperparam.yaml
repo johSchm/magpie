@@ -1,0 +1,13 @@
+--- # Model hyper-parameters.
+loss: "sparse_categorical_crossentropy"
+optimizer:
+  name: "Adam"
+  learning_rate: 0.0001
+  beta_1: 0.9
+  beta_2: 0.95
+  amsgrad: No
+metrics: ["SPARSE_CAT_ACCURACY"]
+batch_size: 2
+epochs: 30
+input_shape: [112, 112, 3]
+weights: ""

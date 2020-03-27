@@ -48,27 +48,34 @@ class EfficientNet(model.Model):
     Paper:  https://arxiv.org/abs/1905.11946
     """
 
-    def __init__(self, input_shape: list, output_shape: list,
+    def __init__(self,
+                 input_shape: list,
+                 output_shape: list,
                  weight_links=None,
                  optimizer=utils.Optimizer.ADADELTA,
                  loss=utils.Loss.SPARSE_CAT_CROSS_ENTROPY,
                  metrics=utils.Metrics.SPARSE_CAT_ACCURACY,
                  normalization=utils.Normalizations.BATCH_NORM,
-                 log_path=None, ckpt_path=None, parallel=False,
-                 layer_prefix="", load_weights_after_logits=True):
+                 log_path=None,
+                 ckpt_path=None,
+                 parallel=False,
+                 layer_prefix="",
+                 load_weights_after_logits=True):
         """ Init. method.
-        :param load_weights_after_logits:
-        :param layer_prefix:
-        :param weight_links:
-        :param input_shape:
-        :param output_shape:
-        :param optimizer:
-        :param loss:
-        :param metrics:
-        :param normalization:
-        :param parallel:
-        :param log_path:
-        :param ckpt_path:
+
+        Args:
+            load_weights_after_logits (bool): Load the weights after adding the logits.
+            layer_prefix (str): Add this prefix to ALL layer names.
+            weight_links (dict): This dictionary contains the link to the weights.
+            input_shape (list): Input shape of the input data (W x H x D).
+            output_shape (list): The output shape for the output data.
+            optimizer (utils.Optimizer): The optimizer.
+            loss (utils.Loss): The loss.
+            metrics (utils.Metrics): The evaluation metric or metrics.
+            normalization (utils.Normalizations): The normalization method.
+            parallel (bool): Enable GPU parallelism.
+            log_path (str): The path to the desired log directory.
+            ckpt_path (str): The path to the checkpoint directory.
         """
         super().__init__(input_shape=input_shape, output_shape=output_shape,
                          parallel=parallel, ckpt_path=ckpt_path, log_path=log_path)

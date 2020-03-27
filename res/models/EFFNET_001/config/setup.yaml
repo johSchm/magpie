@@ -1,0 +1,20 @@
+--- # This is the super-configuration file, which incorporates the sub-configuration files.
+
+--- # key
+key: "EFFNET_001"
+
+--- # paths
+augmentation_path: "config/augm.yaml"
+checkpoint_path: "checkpoints"
+class_path: "config/classes.yaml"
+hyper_parameter_path: "config/hyperparam.yaml"
+data_path: ""
+log_path: "log"
+model_path: "model"
+
+--- # Hardware
+gpu: 0
+
+--- # model
+model_name: "effnetb7"
+model_format: ".h5"
