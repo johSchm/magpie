@@ -7,7 +7,7 @@
 @refs:       https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
 @todo:
 @bug:
-@brief:     Contains tools to create universal blocks for ML models.
+@brief:     The SE Block.
 ------------------------------------------- """
 
 
