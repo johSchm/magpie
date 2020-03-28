@@ -20,7 +20,7 @@ def load_hyper_param(hyper_param_path):
     """ Loads / imports the hyper parameter.
     :param hyper_param_path:
     """
-    import learn.model.model_utils as model_utils
+    import learn.utils.utils as model_utils
     import tensorflow as tf
     import learn.gpu.hvd_wrapper as hvd
 

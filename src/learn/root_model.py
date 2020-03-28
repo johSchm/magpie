@@ -27,7 +27,7 @@ import os
 import learn.utils.utils as utils
 import learn.log as log
 import utils.path_utils as path_utils
-import data.data_utils as data_utils
+import utils.data_utils as data_utils
 import matplotlib.pyplot as plt
 from PIL import Image
 import learn.gpu.hvd_wrapper as hvd

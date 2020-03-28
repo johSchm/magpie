@@ -12,9 +12,9 @@ todo:
 import tensorflow as tf
 import os
 from enum import Enum
-from keras.utils.data_utils import get_file
+from tensorflow.keras.utils import get_file
 import learn.gpu.hvd_wrapper as hvd
-import keras.backend as K
+import tensorflow.keras.backend as K
 import utils.array_utils as array_utils
 
 
