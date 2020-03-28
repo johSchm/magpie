@@ -370,3 +370,25 @@ def get_strategy(parallel=False, quiet=True, log=False):
     if not quiet:
         print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
     return strategy
+
+
+def round_filters(filters, width_coefficient, depth_divisor, min_depth):
+    """Round number of filters based on depth multiplier.
+
+    Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
+    """
+    multiplier = float(width_coefficient)
+    divisor = int(depth_divisor)
+    min_depth = min_depth
+
+    if not multiplier:
+        return filters
+
+    filters *= multiplier
+    min_depth = min_depth or divisor
+    new_filters = max(min_depth, int(filters + divisor / 2) // divisor * divisor)
+    # Make sure that round down does not go down by more than 10%.
+    if new_filters < 0.9 * filters:
+        new_filters += divisor
+
+    return int(new_filters)

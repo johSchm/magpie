@@ -20,7 +20,8 @@ from tensorflow.keras.layers import \
     Conv2D, Conv3D, MaxPooling2D, \
     MaxPool3D, BatchNormalization, Concatenate, concatenate, \
     Input, concatenate, BatchNormalization, AveragePooling3D, \
-    Reshape, Lambda
+    Reshape, Lambda, GlobalAveragePooling2D, GlobalMaxPooling2D
+from tensorflow.keras.utils import get_file, get_source_inputs
 import learn.models.root_model as model
 import learn.models.model_utils as utils
 import learn.models.layers.convbn as cb
@@ -28,6 +29,13 @@ from enum import Enum
 import numpy as np
 import learn.models.blocks.blockargs as bargs
 from keras_applications.imagenet_utils import _obtain_input_shape
+import learn.models.layers.swish as sw
+import learn.models.blocks.mbconvblock as mbb
+
+
+DEFAULT_BATCH_NORM_MOMENTUM = 0.99
+DEFAULT_BATCH_NORM_EPSILON = 1e-3
+DEFAULT_DROP_CONNECT_RATE = 0.0
 
 
 class VersionID(Enum):
@@ -182,11 +190,11 @@ class EfficientNetConvInitializer(tf.keras.initializers.Initializer):
         super(EfficientNetConvInitializer, self).__init__()
 
     def __call__(self, shape, dtype=None):
-        dtype = dtype or K.floatx()
+        dtype = dtype or tf.keras.backend.floatx()
 
         kernel_height, kernel_width, _, out_filters = shape
         fan_out = int(kernel_height * kernel_width * out_filters)
-        return K.random_normal(
+        return tf.keras.backend.random_normal(
             shape, mean=0.0, stddev=np.sqrt(2.0 / fan_out), dtype=dtype)
 
 
@@ -229,18 +237,15 @@ class EfficientNet(model.Model):
                  optimizer=utils.Optimizer.ADADELTA,
                  loss=utils.Loss.SPARSE_CAT_CROSS_ENTROPY,
                  metrics=utils.Metrics.SPARSE_CAT_ACCURACY,
-                 normalization=utils.Normalizations.BATCH_NORM,
                  log_path=None,
                  ckpt_path=None,
                  layer_prefix="",
                  data_format=None,
-                 load_weights_after_logits=True,
                  **kwargs):
         """ Init. method.
 
         Args:
             data_format (list): The format of the image shape.
-            load_weights_after_logits (bool): Load the weights after adding the logits.
             layer_prefix (str): Add this prefix to ALL layer names.
             weight_links (dict): This dictionary contains the link to the weights.
             input_shape (list): Input shape of the input data (W x H x D).
@@ -248,7 +253,6 @@ class EfficientNet(model.Model):
             optimizer (utils.Optimizer): The optimizer.
             loss (utils.Loss): The loss.
             metrics (utils.Metrics): The evaluation metric or metrics.
-            normalization (utils.Normalizations): The normalization method.
             log_path (str): The path to the desired log directory.
             ckpt_path (str): The path to the checkpoint directory.
 
@@ -261,11 +265,28 @@ class EfficientNet(model.Model):
             ckpt_path=ckpt_path,
             log_path=log_path)
 
+        self._batch_norm_momentum = DEFAULT_BATCH_NORM_MOMENTUM
+        self._batch_norm_epsilon = DEFAULT_BATCH_NORM_EPSILON
+        self._pooling = "max"
         if kwargs is not None:
             if "block_args" in kwargs.keys():
                 self._block_args = None if kwargs["block_args"] is None else bargs.get_default_block_list()
             if "width_coefficient" in kwargs.keys():
-                self._width_coefficient = 1.0
+                self._width_coefficient = kwargs["width_coefficient"]
+            if "depth_coefficient" in kwargs.keys():
+                self._depth_coefficient = kwargs["depth_coefficient"]
+            if "depth_divisor" in kwargs.keys():
+                self._depth_divisor = kwargs["depth_divisor"]
+            if "min_depth" in kwargs.keys():
+                self._min_depth = kwargs["min_depth"]
+            if "batch_norm_momentum" in kwargs.keys():
+                self._batch_norm_momentum = kwargs["batch_norm_momentum"]
+            if "batch_norm_epsilon" in kwargs.keys():
+                self._batch_norm_epsilon= kwargs["batch_norm_epsilon"]
+            if "drop_connect_rate" in kwargs.keys():
+                self._drop_connect_rate= kwargs["drop_connect_rate"]
+            if "pooling" in kwargs.keys():
+                self._pooling= kwargs["pooling"]
         self._data_format = None if data_format is None else tf.keras.backend.image_data_format()
         self._channel_axis = 1 if self._data_format == 'channels_first' else -1
         self._layer_prefix = layer_prefix
@@ -273,7 +294,6 @@ class EfficientNet(model.Model):
         self._metrics = metrics
         self._loss = loss
         self._weight_links = weight_links
-        self._norm = normalization
         self._model = self._build_ff_model()
         self._construct_model()
         self._configure(optimizer=optimizer, loss=loss, metrics=metrics)
@@ -285,7 +305,24 @@ class EfficientNet(model.Model):
             self._setup_logits_layers()
             self._model = self._setup_pretrained_weights()
 
-    def _construct_model(self) -> None:
+    def _round_filters(self, filters):
+        """ Rounds the number of filters if required.
+
+        Args:
+            filters (int): Number of original filters.
+
+        Returns:
+            rounded filters (int): Altered number of filters.
+        """
+        if self._width_coefficient and self._depth_divisor and self._min_depth:
+            filters = utils.round_filters(
+                filters=filters,
+                width_coefficient=self._width_coefficient,
+                depth_divisor=self._depth_divisor,
+                min_depth=self._min_depth)
+        return filters
+
+    def _construct_model(self) -> (tf.Tensor, tf.Tensor):
         """ Adds layers to the learn.
 
         Args:
@@ -294,8 +331,6 @@ class EfficientNet(model.Model):
         Returns:
             None: None
         """
-
-        # Stem part
         input_tensor = None
         if input_tensor is None:
             inputs = Input(shape=self._input_shape)
@@ -307,79 +342,77 @@ class EfficientNet(model.Model):
 
         x = inputs
         x = Conv2D(
-            filters=utils.round_filters(32, width_coefficient,
-                                  depth_divisor, min_depth),
+            filters=self._round_filters(32),
             kernel_size=[3, 3],
             strides=[2, 2],
             kernel_initializer=EfficientNetConvInitializer(),
             padding='same',
             use_bias=False)(x)
-        x = layers.BatchNormalization(
-            axis=channel_axis,
-            momentum=batch_norm_momentum,
-            epsilon=batch_norm_epsilon)(x)
-        x = Swish()(x)
+        x = BatchNormalization(
+            axis=self._channel_axis,
+            momentum=self._batch_norm_momentum,
+            epsilon=self._batch_norm_epsilon)(x)
+        x = sw.Swish()(x)
 
-        num_blocks = sum([block_args.num_repeat for block_args in block_args_list])
-        drop_connect_rate_per_block = drop_connect_rate / float(num_blocks)
+        num_blocks = sum([block_args.num_repeat for block_args in self._block_args])
+        drop_connect_rate_per_block = self._drop_connect_rate / float(num_blocks)
 
         # Blocks part
-        for block_idx, block_args in enumerate(block_args_list):
+        for block_idx, block_args in enumerate(self._block_args):
             assert block_args.num_repeat > 0
 
             # Update block input and output filters based on depth multiplier.
-            block_args.input_filters = round_filters(block_args.input_filters, width_coefficient, depth_divisor,
-                                                     min_depth)
-            block_args.output_filters = round_filters(block_args.output_filters, width_coefficient, depth_divisor,
-                                                      min_depth)
-            block_args.num_repeat = round_repeats(block_args.num_repeat, depth_coefficient)
+            block_args.input_filters = self._round_filters(block_args.input_filters)
+            block_args.output_filters = self._round_filters(block_args.output_filters)
+            block_args.num_repeat = utils.round_repeats(
+                block_args.num_repeat, self._depth_coefficient)
 
             # The first block needs to take care of stride and filter size increase.
-            x = MBConvBlock(block_args.input_filters, block_args.output_filters,
+            x = mbb.MBConvBlock(block_args.input_filters, block_args.output_filters,
                             block_args.kernel_size, block_args.strides,
                             block_args.expand_ratio, block_args.se_ratio,
                             block_args.identity_skip, drop_connect_rate_per_block * block_idx,
-                            batch_norm_momentum, batch_norm_epsilon, data_format)(x)
+                            self._batch_norm_momentum, self._batch_norm_epsilon, self._data_format)(x)
 
             if block_args.num_repeat > 1:
                 block_args.input_filters = block_args.output_filters
                 block_args.strides = [1, 1]
 
             for _ in range(block_args.num_repeat - 1):
-                x = MBConvBlock(block_args.input_filters, block_args.output_filters,
+                x = mbb.MBConvBlock(block_args.input_filters, block_args.output_filters,
                                 block_args.kernel_size, block_args.strides,
                                 block_args.expand_ratio, block_args.se_ratio,
                                 block_args.identity_skip, drop_connect_rate_per_block * block_idx,
-                                batch_norm_momentum, batch_norm_epsilon, data_format)(x)
+                                self._batch_norm_momentum, self._batch_norm_epsilon, self._data_format)(x)
 
         # Head part
-        x = layers.Conv2D(
-            filters=round_filters(1280, width_coefficient, depth_coefficient, min_depth),
+        x = Conv2D(
+            filters=self._round_filters(1280),
             kernel_size=[1, 1],
             strides=[1, 1],
             kernel_initializer=EfficientNetConvInitializer(),
             padding='same',
             use_bias=False)(x)
-        x = layers.BatchNormalization(
-            axis=channel_axis,
-            momentum=batch_norm_momentum,
-            epsilon=batch_norm_epsilon)(x)
-        x = Swish()(x)
+        x = BatchNormalization(
+            axis=self._channel_axis,
+            momentum=self._batch_norm_momentum,
+            epsilon=self._batch_norm_epsilon)(x)
+        x = sw.Swish()(x)
 
-        if include_top:
-            x = layers.GlobalAveragePooling2D(data_format=data_format)(x)
+        if self._include_top:
+            x = GlobalAveragePooling2D(data_format=self._data_format)(x)
 
-            if dropout_rate > 0:
-                x = layers.Dropout(dropout_rate)(x)
+            if self._dropout_rate > 0:
+                x = Dropout(self._dropout_rate)(x)
 
-            x = layers.Dense(classes, kernel_initializer=EfficientNetDenseInitializer())(x)
-            x = layers.Activation('softmax')(x)
+            x = Dense(len(self._output_shape), kernel_initializer=EfficientNetDenseInitializer())(x)
+            x = Activation('softmax')(x)
 
         else:
-            if pooling == 'avg':
-                x = layers.GlobalAveragePooling2D()(x)
-            elif pooling == 'max':
-                x = layers.GlobalMaxPooling2D()(x)
+            if self._pooling == 'avg':
+                x = GlobalAveragePooling2D()(x)
+            elif self._pooling == 'max':
+                x = GlobalMaxPooling2D()(x)
 
         outputs = x
 
@@ -388,22 +421,19 @@ class EfficientNet(model.Model):
         if input_tensor is not None:
             inputs = get_source_inputs(input_tensor)
 
-        model = Model(inputs, outputs)
+        return inputs, outputs
 
-        elif weights is not None:
-            model.load_weights(weights)
+    def _build_model(self) -> Model:
+        """ Builds the model
 
-        return model
-
-    def _build_ff_model(self):
-        """ Builds a feed forward learn.
-        :return: ff model
+        Returns:
+            model: The final model.
         """
         model_in, model_out = self._construct_model()
         self._model = Model(inputs=model_in, outputs=model_out)
-        return self._model  #Sequential()
+        return self._model
 
-    def _setup_pretrained_weights(self):
+    def _setup_pretrained_weights(self) -> Model:
         """ Setup for pretrained weights.
         :return: model
         """
@@ -414,7 +444,7 @@ class EfficientNet(model.Model):
             self._load_weights(self._weight_links)
         return self._model
 
-    def _setup_logits_layers(self):
+    def _setup_logits_layers(self) -> Model:
         """ Setup for logits layers.
         :return: model
         """
@@ -426,7 +456,7 @@ class EfficientNet(model.Model):
                               name=self._layer_prefix + 'Logits_Conv3d_6a_1x1')
         num_frames_remaining = int(output.shape[1])
         output = Reshape((num_frames_remaining, self._num_classes))(output)
-        output = Lambda(lambda output: K.mean(output, axis=1, keepdims=False),
+        output = Lambda(lambda output: tf.keras.backend.mean(output, axis=1, keepdims=False),
                         output_shape=lambda s: (s[0], s[2]))(output)
         output = Activation('softmax', name=self._layer_prefix + 'Logits_prediction')(output)
         new_model = Model(self._model.input, output)

@@ -51,24 +51,7 @@ def preprocess_input(x, data_format=None):
     return _preprocess(x, data_format, mode='torch', backend=K)
 
 
-# Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
-def round_filters(filters, width_coefficient, depth_divisor, min_depth):
-    """Round number of filters based on depth multiplier."""
-    multiplier = float(width_coefficient)
-    divisor = int(depth_divisor)
-    min_depth = min_depth
 
-    if not multiplier:
-        return filters
-
-    filters *= multiplier
-    min_depth = min_depth or divisor
-    new_filters = max(min_depth, int(filters + divisor / 2) // divisor * divisor)
-    # Make sure that round down does not go down by more than 10%.
-    if new_filters < 0.9 * filters:
-        new_filters += divisor
-
-    return int(new_filters)
 
 
 # Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
