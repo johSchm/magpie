@@ -229,9 +229,9 @@ class EfficientNet(model.Model):
                  input_shape: list,
                  output_shape: list,
                  weight_links=None,
-                 optimizer=utils.Optimizer.ADADELTA,
-                 loss=utils.Loss.SPARSE_CAT_CROSS_ENTROPY,
-                 metrics=utils.Metrics.SPARSE_CAT_ACCURACY,
+                 optimizer=utils.Optimizer.ADADELTA.value,
+                 loss=utils.Loss.SPARSE_CAT_CROSS_ENTROPY.value,
+                 metrics=utils.Metrics.SPARSE_CAT_ACCURACY.value,
                  log_path=None,
                  ckpt_path=None,
                  layer_prefix="",
@@ -262,7 +262,11 @@ class EfficientNet(model.Model):
 
         self._batch_norm_momentum = DEFAULT_BATCH_NORM_MOMENTUM
         self._batch_norm_epsilon = DEFAULT_BATCH_NORM_EPSILON
+        self._drop_connect_rate = DEFAULT_DROP_CONNECT_RATE
         self._pooling = "max"
+        self._block_args = []
+        self._include_top = True
+        self._dropout_rate = 0.0
         if kwargs is not None:
             if "block_args" in kwargs.keys():
                 self._block_args = None if kwargs["block_args"] is None else bargs.get_default_block_list()
@@ -277,9 +281,9 @@ class EfficientNet(model.Model):
             if "batch_norm_momentum" in kwargs.keys():
                 self._batch_norm_momentum = kwargs["batch_norm_momentum"]
             if "batch_norm_epsilon" in kwargs.keys():
-                self._batch_norm_epsilon= kwargs["batch_norm_epsilon"]
+                self._batch_norm_epsilon = kwargs["batch_norm_epsilon"]
             if "drop_connect_rate" in kwargs.keys():
-                self._drop_connect_rate= kwargs["drop_connect_rate"]
+                self._drop_connect_rate = kwargs["drop_connect_rate"]
             if "pooling" in kwargs.keys():
                 self._pooling= kwargs["pooling"]
         self._data_format = None if data_format is None else tf.keras.backend.image_data_format()
@@ -289,16 +293,16 @@ class EfficientNet(model.Model):
         self._metrics = metrics
         self._loss = loss
         self._weight_links = weight_links
-        self._model = self._build_ff_model()
+        self._model = self._build_model()
         self._construct_model()
         self._configure(optimizer=optimizer, loss=loss, metrics=metrics)
-        if self._weight_links is not None and "ckpt-e" not in self._weight_links["name"]:#not load_weights_after_logits:
-            self._model = self._setup_pretrained_weights()
-            self._setup_logits_layers()
-        else:
-            print("Loading weights after adding logits ...")
-            self._setup_logits_layers()
-            self._model = self._setup_pretrained_weights()
+        #if self._weight_links is not None and "ckpt-e" not in self._weight_links["name"]:#not load_weights_after_logits:
+        #    self._model = self._setup_pretrained_weights()
+        #    self._setup_logits_layers()
+        #else:
+        #    print("Loading weights after adding logits ...")
+        #    self._setup_logits_layers()
+        #    self._model = self._setup_pretrained_weights()
 
     def _round_filters(self, filters):
         """ Rounds the number of filters if required.
@@ -309,12 +313,14 @@ class EfficientNet(model.Model):
         Returns:
             rounded filters (int): Altered number of filters.
         """
-        if self._width_coefficient and self._depth_divisor and self._min_depth:
+        try:
             filters = utils.round_filters(
                 filters=filters,
                 width_coefficient=self._width_coefficient,
                 depth_divisor=self._depth_divisor,
                 min_depth=self._min_depth)
+        except AttributeError:
+            pass
         return filters
 
     def _construct_model(self) -> (tf.Tensor, tf.Tensor):
@@ -349,36 +355,37 @@ class EfficientNet(model.Model):
             epsilon=self._batch_norm_epsilon)(x)
         x = sw.Swish()(x)
 
-        num_blocks = sum([block_args.num_repeat for block_args in self._block_args])
-        drop_connect_rate_per_block = self._drop_connect_rate / float(num_blocks)
+        if len(self._block_args) > 0:
+            num_blocks = sum([block_args.num_repeat for block_args in self._block_args])
+            drop_connect_rate_per_block = self._drop_connect_rate / float(num_blocks)
 
-        # Blocks part
-        for block_idx, block_args in enumerate(self._block_args):
-            assert block_args.num_repeat > 0
+            # Blocks part
+            for block_idx, block_args in enumerate(self._block_args):
+                assert block_args.num_repeat > 0
 
-            # Update block input and output filters based on depth multiplier.
-            block_args.input_filters = self._round_filters(block_args.input_filters)
-            block_args.output_filters = self._round_filters(block_args.output_filters)
-            block_args.num_repeat = utils.round_repeats(
-                block_args.num_repeat, self._depth_coefficient)
+                # Update block input and output filters based on depth multiplier.
+                block_args.input_filters = self._round_filters(block_args.input_filters)
+                block_args.output_filters = self._round_filters(block_args.output_filters)
+                block_args.num_repeat = utils.round_repeats(
+                    block_args.num_repeat, self._depth_coefficient)
 
-            # The first block needs to take care of stride and filter size increase.
-            x = mbb.MBConvBlock(block_args.input_filters, block_args.output_filters,
-                            block_args.kernel_size, block_args.strides,
-                            block_args.expand_ratio, block_args.se_ratio,
-                            block_args.identity_skip, drop_connect_rate_per_block * block_idx,
-                            self._batch_norm_momentum, self._batch_norm_epsilon, self._data_format)(x)
-
-            if block_args.num_repeat > 1:
-                block_args.input_filters = block_args.output_filters
-                block_args.strides = [1, 1]
-
-            for _ in range(block_args.num_repeat - 1):
+                # The first block needs to take care of stride and filter size increase.
                 x = mbb.MBConvBlock(block_args.input_filters, block_args.output_filters,
                                 block_args.kernel_size, block_args.strides,
                                 block_args.expand_ratio, block_args.se_ratio,
                                 block_args.identity_skip, drop_connect_rate_per_block * block_idx,
                                 self._batch_norm_momentum, self._batch_norm_epsilon, self._data_format)(x)
+
+                if block_args.num_repeat > 1:
+                    block_args.input_filters = block_args.output_filters
+                    block_args.strides = [1, 1]
+
+                for _ in range(block_args.num_repeat - 1):
+                    x = mbb.MBConvBlock(block_args.input_filters, block_args.output_filters,
+                                    block_args.kernel_size, block_args.strides,
+                                    block_args.expand_ratio, block_args.se_ratio,
+                                    block_args.identity_skip, drop_connect_rate_per_block * block_idx,
+                                    self._batch_norm_momentum, self._batch_norm_epsilon, self._data_format)(x)
 
         # Head part
         x = Conv2D(

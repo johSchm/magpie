@@ -22,10 +22,9 @@ class TestEfficientNet(unittest.TestCase):
     def test_construction_values(self):
         """ Construction test of the model.
         """
-        self.assertRaises(ValueError, en.EfficientNet(
+        model = en.EfficientNet(
             input_shape=[224, 224, 3],
-            output_shape=[1000]
-        ))
+            output_shape=[1000])
 
 
 if __name__ == '__main__':

@@ -92,7 +92,7 @@ class Model:
 
     @staticmethod
     def get_norm_layer(norm, previous_layer=None):
-        """ Returns the normlaization layer.
+        """ Returns the normalization layer.
         :param norm:
         :param previous_layer:
         :return: layer
