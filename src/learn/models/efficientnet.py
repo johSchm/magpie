@@ -16,19 +16,14 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import \
     Dense, Dropout, Activation,\
-    Flatten, MaxPooling3D, ZeroPadding3D, \
-    Conv2D, Conv3D, MaxPooling2D, \
-    MaxPool3D, BatchNormalization, Concatenate, concatenate, \
-    Input, concatenate, BatchNormalization, AveragePooling3D, \
-    Reshape, Lambda, GlobalAveragePooling2D, GlobalMaxPooling2D
-from tensorflow.keras.utils import get_file, get_source_inputs
-import learn.models.root_model as model
-import learn.models.model_utils as utils
-import learn.models.layers.convbn as cb
+    Conv2D, Input, BatchNormalization, \
+    GlobalAveragePooling2D, GlobalMaxPooling2D
+from tensorflow.keras.utils import get_source_inputs
+import learn.root_model as model
+import learn.utils.utils as utils
 from enum import Enum
 import numpy as np
 import learn.models.blocks.blockargs as bargs
-from keras_applications.imagenet_utils import _obtain_input_shape
 import learn.models.layers.swish as sw
 import learn.models.blocks.mbconvblock as mbb
 
@@ -444,22 +439,3 @@ class EfficientNet(model.Model):
             self._load_weights(self._weight_links)
         return self._model
 
-    def _setup_logits_layers(self) -> Model:
-        """ Setup for logits layers.
-        :return: model
-        """
-        self._model.outputs = [self._model.layers[-1].output]
-        output = self._model.get_layer(self._layer_prefix + 'Logits_global_avg_pool').output
-        output = Dropout(0.5)(output)
-        output = cb.conv3d_bn(output, self._num_classes, 1, 1, 1, padding='same',
-                              use_bias=True, use_activation_fn=False, use_bn=False,
-                              name=self._layer_prefix + 'Logits_Conv3d_6a_1x1')
-        num_frames_remaining = int(output.shape[1])
-        output = Reshape((num_frames_remaining, self._num_classes))(output)
-        output = Lambda(lambda output: tf.keras.backend.mean(output, axis=1, keepdims=False),
-                        output_shape=lambda s: (s[0], s[2]))(output)
-        output = Activation('softmax', name=self._layer_prefix + 'Logits_prediction')(output)
-        new_model = Model(self._model.input, output)
-        self._model = new_model
-        self._configure(optimizer=self._optimizer, loss=self._loss, metrics=self._metrics)
-        return new_model
