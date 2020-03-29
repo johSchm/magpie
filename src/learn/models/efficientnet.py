@@ -53,60 +53,6 @@ class VersionID(Enum):
     B7 = 7
 
 
-def get_width_coefficient(vid: VersionID) -> float:
-    """ Returns the width coefficient for the specific model version:
-    :param vid: (VersionID) Version ID.
-    :return width coefficient: float
-    """
-    if type(vid) == VersionID:
-        vid = vid.value
-    if vid == VersionID.B0:
-        return 1.0
-    elif vid == VersionID.B1:
-        return 1.0
-    elif vid == VersionID.B2:
-        return 1.1
-    elif vid == VersionID.B3:
-        return 1.2
-    elif vid == VersionID.B4:
-        return 1.4
-    elif vid == VersionID.B5:
-        return 1.6
-    elif vid == VersionID.B6:
-        return 1.8
-    elif vid == VersionID.B7:
-        return 2.0
-    else:
-        raise ValueError("`vid` has to be from type `VersionID` or a number, which fits `VersionID`.")
-
-
-def get_depth_coefficient(vid: VersionID) -> float:
-    """ Returns the depth coefficient for the specific model version:
-    :param vid: (VersionID) Version ID.
-    :return: depth coefficient: float
-    """
-    if type(vid) == VersionID:
-        vid = vid.value
-    if vid == VersionID.B0:
-        return 1.0
-    elif vid == VersionID.B1:
-        return 1.1
-    elif vid == VersionID.B2:
-        return 1.2
-    elif vid == VersionID.B3:
-        return 1.4
-    elif vid == VersionID.B4:
-        return 1.8
-    elif vid == VersionID.B5:
-        return 2.2
-    elif vid == VersionID.B6:
-        return 2.6
-    elif vid == VersionID.B7:
-        return 3.1
-    else:
-        raise ValueError("`vid` has to be from type `VersionID` or a number, which fits `VersionID`.")
-
-
 def efficientnet_factory(
         input_shape: list,
         output_shape: list,
@@ -133,23 +79,72 @@ def efficientnet_factory(
     :param ckpt_path: (str) The path to the checkpoint directory.
     :param id: (VersionID) The version ID of the model.
     :return model (EfficientNet): The configured model.
+    :raises ValueError if the passed id is not part of VersionID.
+            ValueError if the version specific image size does not fit the passed input shape.
     """
-    setup_dict = {}
-    if id == VersionID.B0 or id == VersionID.B0.value:
-        setup_dict = {}
-
+    if type(id) == VersionID:
+        id = id.value
+    if id == VersionID.B0:
+        width_coefficient = 1.0
+        depth_coefficient = 1.0
+        default_size = 224
+        dropout_rate = 0.2
+    elif id == VersionID.B1:
+        width_coefficient = 1.0
+        depth_coefficient = 1.1
+        default_size = 240
+        dropout_rate = 0.2
+    elif id == VersionID.B2:
+        width_coefficient = 1.1
+        depth_coefficient = 1.2
+        default_size = 260
+        dropout_rate = 0.3
+    elif id == VersionID.B3:
+        width_coefficient = 1.2
+        depth_coefficient = 1.4
+        default_size = 300
+        dropout_rate = 0.3
+    elif id == VersionID.B4:
+        width_coefficient = 1.4
+        depth_coefficient = 1.8
+        default_size = 380
+        dropout_rate = 0.4
+    elif id == VersionID.B5:
+        width_coefficient = 1.6
+        depth_coefficient = 2.2
+        default_size = 456
+        dropout_rate = 0.4
+    elif id == VersionID.B6:
+        width_coefficient = 1.8
+        depth_coefficient = 2.6
+        default_size = 528
+        dropout_rate = 0.5
+    elif id == VersionID.B7:
+        width_coefficient = 2.0
+        depth_coefficient = 3.1
+        default_size = 600
+        dropout_rate = 0.5
+    else:
+        raise ValueError("{0} is not defined within VersionID!".format(id))
+    if default_size not in input_shape:
+        raise ValueError("The image size defined in the `input_shape`"
+                         " has to be {0} and not the size contained in {1}!"
+                         .format(default_size, input_shape))
     return EfficientNet(
+        dropout_rate=dropout_rate,
+        width_coefficient=width_coefficient,
+        depth_coefficient=depth_coefficient,
         input_shape=input_shape,
         output_shape=output_shape,
         weight_links=weight_links,
         optimizer=optimizer,
         loss=loss.metrics,
+        metrics=metrics,
         normalization=normalization,
         log_path=log_path,
         ckpt_path=ckpt_path,
         parallel=parallel,
-        layer_prefix=layer_prefix,
-        kwargs=setup_dict)
+        layer_prefix=layer_prefix)
 
 
 class EfficientNetConvInitializer(tf.keras.initializers.Initializer):
