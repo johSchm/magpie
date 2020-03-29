@@ -19,17 +19,34 @@ import learn.models.blocks.seblock as seb
 import learn.models.layers.dropconnect as dc
 
 
-def MBConvBlock(input_filters, output_filters,
-                kernel_size, strides,
-                expand_ratio, se_ratio,
-                id_skip, drop_connect_rate,
+def MBConvBlock(input_filters: int,
+                output_filters: int,
+                kernel_size: int,
+                strides: list,
+                expand_ratio: int,
+                se_ratio: float,
+                id_skip: bool,
+                drop_connect_rate: float,
                 batch_norm_momentum=0.99,
                 batch_norm_epsilon=1e-3,
                 data_format=None,
                 kernel_initializer=None):
-
-    if data_format is None:
-        data_format = tf.keras.backend.image_data_format()
+    """ A MB Conv Block.
+    :param input_filters: (int) The input filters.
+    :param output_filters: (int) The output filters.
+    :param kernel_size: (int) The size of the kernel.
+    :param strides: (int) The number of the strides.
+    :param expand_ratio: (float) The expand ration.
+    :param se_ratio: (float) The SE ratio.
+    :param id_skip: (bool) The Identity skip.
+    :param drop_connect_rate: (float) The drop connection rate.
+    :param batch_norm_momentum: (float) The momentum value of the batch normalization.
+    :param batch_norm_epsilon: (float) The epsilon value of the batch normalization.
+    :param data_format: (list) The data format of the data.
+    :param kernel_initializer: (Initializer) The kernel init.
+    :return: The layer output as a tensor.
+    """
+    data_format = data_format if data_format is not None else tf.keras.backend.image_data_format()
 
     if data_format == 'channels_first':
         channel_axis = 1
@@ -42,7 +59,6 @@ def MBConvBlock(input_filters, output_filters,
     filters = input_filters * expand_ratio
 
     def block(inputs):
-
         if expand_ratio != 1:
             x = Conv2D(
                 filters,
@@ -72,10 +88,7 @@ def MBConvBlock(input_filters, output_filters,
         x = sw.Swish()(x)
 
         if has_se:
-            x = seb.SEBlock(input_filters, se_ratio, expand_ratio,
-                        data_format)(x)
-
-        # output phase
+            x = seb.SEBlock(input_filters, se_ratio, expand_ratio, data_format)(x)
 
         x = Conv2D(
             output_filters,
@@ -90,8 +103,7 @@ def MBConvBlock(input_filters, output_filters,
             epsilon=batch_norm_epsilon)(x)
 
         if id_skip:
-            if all(s == 1 for s in strides) and (
-                    input_filters == output_filters):
+            if all(s == 1 for s in strides) and (input_filters == output_filters):
 
                 # only apply drop_connect if skip presents.
                 if drop_connect_rate:

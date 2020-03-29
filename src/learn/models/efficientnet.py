@@ -141,7 +141,8 @@ def efficientnet_factory(
         metrics=metrics,
         log_path=log_path,
         ckpt_path=ckpt_path,
-        layer_prefix=layer_prefix)
+        layer_prefix=layer_prefix,
+        block_args=bargs.get_default_blockargs())
 
 
 class EfficientNetConvInitializer(tf.keras.initializers.Initializer):
@@ -248,13 +249,13 @@ class EfficientNet(model.Model):
         self._block_args = []
         self._include_top = True
         self._dropout_rate = dropout_rate
-        self._block_args = None if block_args is None else bargs.get_default_block_list()
+        self._block_args = block_args if block_args is not None else bargs.get_default_blockargs()
         self._width_coefficient = width_coefficient
         self._depth_coefficient = depth_coefficient
         self._batch_norm_momentum = batch_norm_momentum
         self._batch_norm_epsilon = batch_norm_epsilon
         self._drop_connect_rate = drop_connect_rate
-        self._data_format = None if data_format is None else tf.keras.backend.image_data_format()
+        self._data_format = data_format if data_format is not None else tf.keras.backend.image_data_format()
         self._channel_axis = 1 if self._data_format == 'channels_first' else -1
         self._layer_prefix = layer_prefix
         self._optimizer = optimizer
@@ -264,7 +265,6 @@ class EfficientNet(model.Model):
         self._depth_divisor = DEFAULT_DEPTH_DIVISOR
         self._min_depth = DEFAULT_MIN_DEPTH
         self._model = self._build_model()
-        self._construct_model()
         self._configure(optimizer=optimizer, loss=loss, metrics=metrics)
         #if self._weight_links is not None and "ckpt-e" not in self._weight_links["name"]:#not load_weights_after_logits:
         #    self._model = self._setup_pretrained_weights()
@@ -273,21 +273,6 @@ class EfficientNet(model.Model):
         #    print("Loading weights after adding logits ...")
         #    self._setup_logits_layers()
         #    self._model = self._setup_pretrained_weights()
-
-    def _round_filters(self, filters):
-        """ Rounds the number of filters if required.
-        :param filters (int): Number of original filters.
-        :return rounded filters (int): Altered number of filters.
-        """
-        try:
-            filters = utils.round_filters(
-                filters=filters,
-                width_coefficient=self._width_coefficient,
-                depth_divisor=self._depth_divisor,
-                min_depth=self._min_depth)
-        except AttributeError:
-            pass
-        return filters
 
     def _construct_model(self) -> (tf.Tensor, tf.Tensor):
         """ Adds layers to the learn.
@@ -304,12 +289,9 @@ class EfficientNet(model.Model):
 
         x = inputs
         x = Conv2D(
-            filters=self._round_filters(32),
-            kernel_size=[3, 3],
-            strides=[2, 2],
-            kernel_initializer=EfficientNetConvInitializer(),
-            padding='same',
-            use_bias=False)(x)
+                filters=utils.round_filters(32, self._width_coefficient, self._depth_divisor, self._min_depth),
+                kernel_size=[3, 3], strides=[2, 2], kernel_initializer=EfficientNetConvInitializer(),
+                padding='same', use_bias=False)(x)
         x = BatchNormalization(
             axis=self._channel_axis,
             momentum=self._batch_norm_momentum,
@@ -325,32 +307,36 @@ class EfficientNet(model.Model):
                 assert block_args.num_repeat > 0
 
                 # Update block input and output filters based on depth multiplier.
-                block_args.input_filters = self._round_filters(block_args.input_filters)
-                block_args.output_filters = self._round_filters(block_args.output_filters)
+                block_args.input_filters = utils.round_filters(
+                    block_args.input_filters, self._width_coefficient, self._depth_divisor, self._min_depth)
+                block_args.output_filters = utils.round_filters(
+                    block_args.output_filters, self._width_coefficient, self._depth_divisor, self._min_depth)
                 block_args.num_repeat = utils.round_repeats(
                     block_args.num_repeat, self._depth_coefficient)
 
                 # The first block needs to take care of stride and filter size increase.
-                x = mbb.MBConvBlock(block_args.input_filters, block_args.output_filters,
-                                block_args.kernel_size, block_args.strides,
-                                block_args.expand_ratio, block_args.se_ratio,
-                                block_args.identity_skip, drop_connect_rate_per_block * block_idx,
-                                self._batch_norm_momentum, self._batch_norm_epsilon, self._data_format)(x)
+                x = mbb.MBConvBlock(
+                    block_args.input_filters, block_args.output_filters,
+                    block_args.kernel_size, block_args.strides,
+                    block_args.expand_ratio, block_args.se_ratio,
+                    block_args.identity_skip, drop_connect_rate_per_block * block_idx,
+                    self._batch_norm_momentum, self._batch_norm_epsilon, self._data_format)(x)
 
                 if block_args.num_repeat > 1:
                     block_args.input_filters = block_args.output_filters
                     block_args.strides = [1, 1]
 
                 for _ in range(block_args.num_repeat - 1):
-                    x = mbb.MBConvBlock(block_args.input_filters, block_args.output_filters,
-                                    block_args.kernel_size, block_args.strides,
-                                    block_args.expand_ratio, block_args.se_ratio,
-                                    block_args.identity_skip, drop_connect_rate_per_block * block_idx,
-                                    self._batch_norm_momentum, self._batch_norm_epsilon, self._data_format)(x)
+                    x = mbb.MBConvBlock(
+                        block_args.input_filters, block_args.output_filters,
+                        block_args.kernel_size, block_args.strides,
+                        block_args.expand_ratio, block_args.se_ratio,
+                        block_args.identity_skip, drop_connect_rate_per_block * block_idx,
+                        self._batch_norm_momentum, self._batch_norm_epsilon, self._data_format)(x)
 
         # Head part
         x = Conv2D(
-            filters=self._round_filters(1280),
+            filters=utils.round_filters(1280, self._width_coefficient, self._depth_divisor, self._min_depth),
             kernel_size=[1, 1],
             strides=[1, 1],
             kernel_initializer=EfficientNetConvInitializer(),
@@ -364,19 +350,13 @@ class EfficientNet(model.Model):
 
         if self._include_top:
             x = GlobalAveragePooling2D(data_format=self._data_format)(x)
-
             if self._dropout_rate > 0:
                 x = Dropout(self._dropout_rate)(x)
-
-            x = Dense(len(self._output_shape), kernel_initializer=EfficientNetDenseInitializer())(x)
+            x = Dense(self._output_shape[0], kernel_initializer=EfficientNetDenseInitializer())(x)
             x = Activation('softmax')(x)
-
         else:
-            if self._pooling == 'avg':
-                x = GlobalAveragePooling2D()(x)
-            elif self._pooling == 'max':
-                x = GlobalMaxPooling2D()(x)
-
+            #x = GlobalAveragePooling2D()(x)
+            x = GlobalMaxPooling2D()(x)
         outputs = x
 
         # Ensure that the models takes into account

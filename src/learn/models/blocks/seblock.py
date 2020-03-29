@@ -13,7 +13,7 @@
 
 import tensorflow as tf
 from tensorflow.keras.layers import Lambda, Conv2D, Activation, Multiply
-import learn.models.layers.swish
+import learn.models.layers.swish as sw
 
 
 def SEBlock(input_filters, se_ratio, expand_ratio, data_format=None, kernel_initializer=None):
@@ -51,8 +51,7 @@ def SEBlock(input_filters, se_ratio, expand_ratio, data_format=None, kernel_init
             kernel_initializer=kernel_initializer,
             padding='same',
             use_bias=True)(x)
-        x = Swish()(x)
-        # Excite
+        x = sw.Swish()(x)
         x = Conv2D(
             filters,
             kernel_size=[1, 1],

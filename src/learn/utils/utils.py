@@ -16,6 +16,7 @@ from tensorflow.keras.utils import get_file
 import learn.gpu.hvd_wrapper as hvd
 import tensorflow.keras.backend as K
 import utils.array_utils as array_utils
+import math
 
 
 class ModelID(Enum):
@@ -373,9 +374,12 @@ def get_strategy(parallel=False, quiet=True, log=False):
 
 
 def round_filters(filters, width_coefficient, depth_divisor, min_depth):
-    """Round number of filters based on depth multiplier.
-
+    """ Round number of filters based on depth multiplier.
     Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
+    :param filters: (int) Number of intended filters.
+    :param width_coefficient: (float) The width coefficient.
+    :param depth_divisor: (float) The depth divisor.
+    :param min_depth: (float) The minimal depth for the network to work.
     """
     multiplier = float(width_coefficient)
     divisor = int(depth_divisor)
@@ -392,3 +396,17 @@ def round_filters(filters, width_coefficient, depth_divisor, min_depth):
         new_filters += divisor
 
     return int(new_filters)
+
+
+def round_repeats(repeats, depth_coefficient):
+    """ Round number of filters based on depth multiplier.
+    Obtained from https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/efficientnet_model.py
+    :param repeats: (int) Number repeats.
+    :param depth_coefficient: (float) The depth coefficient.
+    """
+    multiplier = depth_coefficient
+
+    if not multiplier:
+        return repeats
+
+    return int(math.ceil(multiplier * repeats))
