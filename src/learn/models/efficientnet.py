@@ -9,13 +9,12 @@
              https://arxiv.org/abs/1905.11946
 @todo:
 @bug:
-@brief:
+@brief:      The efficient net model implementation.
 ------------------------------------------- """
 
 
-import warnings
 import tensorflow as tf
-from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.models import Model
 from tensorflow.keras.layers import \
     Dense, Dropout, Activation,\
     Conv2D, Input, BatchNormalization, \
@@ -30,6 +29,9 @@ import learn.models.layers.swish as sw
 import learn.models.blocks.mbconvblock as mbb
 
 
+DEFAULT_DROPOUT_RATE = 0.0
+DEFAULT_WIDTH_COEFFICIENT = 0.0
+DEFAULT_DEPTH_COEFFICIENT = 0.0
 DEFAULT_DEPTH_DIVISOR = 8
 DEFAULT_MIN_DEPTH = 0
 DEFAULT_BATCH_NORM_MOMENTUM = 0.99
@@ -213,11 +215,12 @@ class EfficientNet(model.Model):
                  layer_prefix="",
                  data_format=None,
                  block_args=None,
-                 width_coefficient=0.0,
-                 depth_coefficient=0.0,
+                 width_coefficient=DEFAULT_WIDTH_COEFFICIENT,
+                 depth_coefficient=DEFAULT_DEPTH_COEFFICIENT,
                  batch_norm_momentum=DEFAULT_BATCH_NORM_MOMENTUM,
                  batch_norm_epsilon=DEFAULT_BATCH_NORM_EPSILON,
                  drop_connect_rate=DEFAULT_DROP_CONNECT_RATE,
+                 dropout_rate=DEFAULT_DROPOUT_RATE,
                  **kwargs):
         """ Init. method.
         :param data_format (list): The format of the image shape.
@@ -236,6 +239,7 @@ class EfficientNet(model.Model):
         :param batch_norm_momentum (float):
         :param batch_norm_epsilon (float):
         :param drop_connect_rate (float):
+        :param dropout_rate (float):
         """
         super().__init__(
             input_shape=input_shape,
@@ -246,10 +250,9 @@ class EfficientNet(model.Model):
         self._batch_norm_momentum = DEFAULT_BATCH_NORM_MOMENTUM
         self._batch_norm_epsilon = DEFAULT_BATCH_NORM_EPSILON
         self._drop_connect_rate = DEFAULT_DROP_CONNECT_RATE
-        self._pooling = "max"
         self._block_args = []
         self._include_top = True
-        self._dropout_rate = 0.0
+        self._dropout_rate = dropout_rate
         self._block_args = None if block_args is None else bargs.get_default_block_list()
         self._width_coefficient = width_coefficient
         self._depth_coefficient = depth_coefficient
