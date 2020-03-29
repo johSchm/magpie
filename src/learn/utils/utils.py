@@ -17,6 +17,7 @@ import learn.gpu.hvd_wrapper as hvd
 import tensorflow.keras.backend as K
 import utils.array_utils as array_utils
 import math
+import utils.path_utils as path_utils
 
 
 class ModelID(Enum):
@@ -81,122 +82,122 @@ class WeightLinks(Enum):
     I3D_RGB_KINECTS = {
         "name": "i3d_rgb_kinects",
         "http": 'https://github.com/dlpbc/keras-kinetics-i3d/releases/download/v0.2/rgb_inception_i3d_kinetics_only_tf_dim_ordering_tf_kernels_no_top.h5',
-        "path": "../res/weights/i3d/rgb_inception_i3d_kinetics_only_tf_dim_ordering_tf_kernels_no_top.h5"
+        "path": "res/weights/i3d/rgb_inception_i3d_kinetics_only_tf_dim_ordering_tf_kernels_no_top.h5"
     }
     I3D_FLOW_KINECTS = {
         "name": "i3d_flow_kinects",
         "http": 'https://github.com/dlpbc/keras-kinetics-i3d/releases/download/v0.2/flow_inception_i3d_kinetics_only_tf_dim_ordering_tf_kernels_no_top.h5',
-        "path": "../res/weights/i3d/flow_inception_i3d_kinetics_only_tf_dim_ordering_tf_kernels_no_top.h5"
+        "path": "res/weights/i3d/flow_inception_i3d_kinetics_only_tf_dim_ordering_tf_kernels_no_top.h5"
     }
     I3D_RGB_IMAGENET_AND_KINECTS = {
         "name": "i3d_rgb_imagenet_and_kinects",
         "http": 'https://github.com/dlpbc/keras-kinetics-i3d/releases/download/v0.2/rgb_inception_i3d_imagenet_and_kinetics_tf_dim_ordering_tf_kernels_no_top.h5',
-        "path": "../res/weights/i3d/rgb_inception_i3d_imagenet_and_kinetics_tf_dim_ordering_tf_kernels_no_top.h5"
+        "path": "res/weights/i3d/rgb_inception_i3d_imagenet_and_kinetics_tf_dim_ordering_tf_kernels_no_top.h5"
     }
     I3D_FLOW_IMAGENET_AND_KINECTS = {
         "name": "i3d_flow_imagenet_and_kinects",
         "http": 'https://github.com/dlpbc/keras-kinetics-i3d/releases/download/v0.2/flow_inception_i3d_imagenet_and_kinetics_tf_dim_ordering_tf_kernels_no_top.h5',
-        "path": "../res/weights/i3d/flow_inception_i3d_imagenet_and_kinetics_tf_dim_ordering_tf_kernels_no_top.h5"
+        "path": "res/weights/i3d/flow_inception_i3d_imagenet_and_kinetics_tf_dim_ordering_tf_kernels_no_top.h5"
     }
     C3D_RGB_SPORTS1M = {
         "name": "c3d_rgb_sports1m",
         "http": "https://github.com/adamcasson/c3d/releases/download/v0.1/sports1M_weights_tf.h5",
-        "path": "../res/weights/c3d/c3d-sports1M_weights.h5"
+        "path": "res/weights/c3d/c3d-sports1M_weights.h5"
     }
     EFFNETB0_RGB_IMAGENET_TOP = {
         "name": "effnetb0_rgb_imagenet_top",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b0.h5",
-        "path": "../res/weights/effnet/effnetb0_top_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb0_top_imagenet_weights.h5",
         "sample_size": 224
     }
     EFFNETB0_RGB_IMAGENET_NOTOP = {
         "name": "effnetb0_rgb_imagenet_notop",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b0_notop.h5",
-        "path": "../res/weights/effnet/effnetb0_notop_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb0_notop_imagenet_weights.h5",
         "sample_size": 224
     }
     EFFNETB1_RGB_IMAGENET_TOP = {
         "name": "effnetb1_rgb_imagenet_top",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b1.h5",
-        "path": "../res/weights/effnet/effnetb1_top_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb1_top_imagenet_weights.h5",
         "sample_size": 240
     }
     EFFNETB1_RGB_IMAGENET_NOTOP = {
         "name": "effnetb1_rgb_imagenet_notop",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b1_notop.h5",
-        "path": "../res/weights/effnet/effnetb1_notop_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb1_notop_imagenet_weights.h5",
         "sample_size": 240
     }
     EFFNETB2_RGB_IMAGENET_TOP = {
         "name": "effnetb2_rgb_imagenet_top",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b2.h5",
-        "path": "../res/weights/effnet/effnetb2_top_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb2_top_imagenet_weights.h5",
         "sample_size": 260
     }
     EFFNETB2_RGB_IMAGENET_NOTOP = {
         "name": "effnetb2_rgb_imagenet_notop",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b2_notop.h5",
-        "path": "../res/weights/effnet/effnetb2_notop_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb2_notop_imagenet_weights.h5",
         "sample_size": 260
     }
     EFFNETB3_RGB_IMAGENET_TOP = {
         "name": "effnetb3_rgb_imagenet_top",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b3.h5",
-        "path": "../res/weights/effnet/effnetb3_top_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb3_top_imagenet_weights.h5",
         "sample_size": 300
     }
     EFFNETB3_RGB_IMAGENET_NOTOP = {
         "name": "effnetb3_rgb_imagenet_notop",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b3_notop.h5",
-        "path": "../res/weights/effnet/effnetb3_notop_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb3_notop_imagenet_weights.h5",
         "sample_size": 300
     }
     EFFNETB4_RGB_IMAGENET_TOP = {
         "name": "effnetb4_rgb_imagenet_top",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b4.h5",
-        "path": "../res/weights/effnet/effnetb4_top_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb4_top_imagenet_weights.h5",
         "sample_size": 380
     }
     EFFNETB4_RGB_IMAGENET_NOTOP = {
         "name": "effnetb4_rgb_imagenet_notop",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b4_notop.h5",
-        "path": "../res/weights/effnet/effnetb4_notop_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb4_notop_imagenet_weights.h5",
         "sample_size": 380
     }
     EFFNETB5_RGB_IMAGENET_TOP = {
         "name": "effnetb5_rgb_imagenet_top",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b5.h5",
-        "path": "../res/weights/effnet/effnetb5_top_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb5_top_imagenet_weights.h5",
         "sample_size": 456
     }
     EFFNETB5_RGB_IMAGENET_NOTOP = {
         "name": "effnetb5_rgb_imagenet_notop",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b5_notop.h5",
-        "path": "../res/weights/effnet/effnetb5_notop_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb5_notop_imagenet_weights.h5",
         "sample_size": 456
     }
     EFFNETB6_RGB_IMAGENET_TOP = {
         "name": "effnetb6_rgb_imagenet_top",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b6.h5",
-        "path": "../res/weights/effnet/effnetb6_top_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb6_top_imagenet_weights.h5",
         "sample_size": 528
     }
     EFFNETB6_RGB_IMAGENET_NOTOP = {
         "name": "effnetb6_rgb_imagenet_notop",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b6_notop.h5",
-        "path": "../res/weights/effnet/effnetb6_notop_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb6_notop_imagenet_weights.h5",
         "sample_size": 528
     }
     EFFNETB7_RGB_IMAGENET_TOP = {
         "name": "effnetb7_rgb_imagenet_top",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b7.h5",
-        "path": "../res/weights/effnet/effnetb7_top_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb7_top_imagenet_weights.h5",
         "sample_size": 600
     }
     EFFNETB7_RGB_IMAGENET_NOTOP = {
         "name": "effnetb7_rgb_imagenet_notop",
         "http": "https://github.com/titu1994/keras-efficientnets/releases/download/v0.1/efficientnet-b7_notop.h5",
-        "path": "../res/weights/effnet/effnetb7_notop_imagenet_weights.h5",
+        "path": "res/weights/effnet/effnetb7_notop_imagenet_weights.h5",
         "sample_size": 600
     }
 
@@ -314,14 +315,14 @@ def get_metric_key(metrics_as_str):
     return metrics
 
 
-def download_weights(weights_links):
+def download_weights(weight_links):
     """ This will download the weights to the path in the dict.
-    :param weights_links:
+    :param weight_links:
     """
-    path = os.path.join(os.getcwd(), weights_links['path'])
+    path = os.path.join(path_utils.get_root_path(), weight_links['path'])
     if not os.path.exists(os.path.dirname(path)):
         os.makedirs(os.path.dirname(path))
-    get_file(path, weights_links['http'], cache_subdir='models',
+    get_file(path, weight_links['http'], cache_subdir='models',
              md5_hash='b7a93b2f9156ccbebe3ca24b41fc5402')
 
 

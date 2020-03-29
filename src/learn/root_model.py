@@ -86,9 +86,12 @@ class Model:
                     http (str): Online link to weights for download.
                 }
         """
-        if not os.path.isfile(weight_links['path']):
+        if type(weight_links) is utils.WeightLinks:
+            weight_links = weight_links.value
+        path = os.path.join(path_utils.get_root_path(), weight_links['path'])
+        if not os.path.isfile(path):
             utils.download_weights(weight_links)
-        self._model.load_weights(weight_links['path'])
+        self._model.load_weights(path)
 
     @staticmethod
     def get_norm_layer(norm, previous_layer=None):

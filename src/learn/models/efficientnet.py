@@ -265,14 +265,8 @@ class EfficientNet(model.Model):
         self._depth_divisor = DEFAULT_DEPTH_DIVISOR
         self._min_depth = DEFAULT_MIN_DEPTH
         self._model = self._build_model()
+        self._model = self._setup_weights()
         self._configure(optimizer=optimizer, loss=loss, metrics=metrics)
-        #if self._weight_links is not None and "ckpt-e" not in self._weight_links["name"]:#not load_weights_after_logits:
-        #    self._model = self._setup_pretrained_weights()
-        #    self._setup_logits_layers()
-        #else:
-        #    print("Loading weights after adding logits ...")
-        #    self._setup_logits_layers()
-        #    self._model = self._setup_pretrained_weights()
 
     def _construct_model(self) -> (tf.Tensor, tf.Tensor):
         """ Adds layers to the learn.
@@ -384,4 +378,3 @@ class EfficientNet(model.Model):
             print("Loading pre-trained weights ...")
             self._load_weights(self._weight_links)
         return self._model
-

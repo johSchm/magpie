@@ -11,6 +11,9 @@ todo:
 import os
 
 
+PROJECT_NAME = "magpie"
+
+
 def join(path, *paths, win_raw=False):
     """ Joins multiple paths.
     (OS independent)
@@ -64,3 +67,10 @@ def create_directory(path):
     if os.path.exists(path):
         return
     os.makedirs(path)
+
+
+def get_root_path() -> str:
+    """ Returns the root path to the project.
+    :return path
+    """
+    return os.getcwd().split(PROJECT_NAME, 1)[0] + PROJECT_NAME
