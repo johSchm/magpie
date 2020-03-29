@@ -60,13 +60,11 @@ def efficientnet_factory(
         output_shape: list,
         id=VersionID.LATEST,
         weight_links=None,
-        optimizer=utils.Optimizer.ADADELTA,
-        loss=utils.Loss.SPARSE_CAT_CROSS_ENTROPY,
-        metrics=utils.Metrics.SPARSE_CAT_ACCURACY,
-        normalization=utils.Normalizations.BATCH_NORM,
+        optimizer=utils.Optimizer.ADADELTA.value,
+        loss=utils.Loss.SPARSE_CAT_CROSS_ENTROPY.value,
+        metrics=utils.Metrics.SPARSE_CAT_ACCURACY.value,
         log_path=None,
         ckpt_path=None,
-        parallel=False,
         layer_prefix=""):
     """ Init. method.
     :param layer_prefix: (str) Add this prefix to ALL layer names.
@@ -76,7 +74,6 @@ def efficientnet_factory(
     :param optimizer: (utils.Optimizer) The optimizer.
     :param loss: (utils.Loss) The loss.
     :param metrics: (utils.Metrics) The evaluation metric or metrics.
-    :param normalization: (utils.Normalizations) The normalization method.
     :param log_path: (str) The path to the desired log directory.
     :param ckpt_path: (str) The path to the checkpoint directory.
     :param id: (VersionID) The version ID of the model.
@@ -86,42 +83,42 @@ def efficientnet_factory(
     """
     if type(id) == VersionID:
         id = id.value
-    if id == VersionID.B0:
+    if id == VersionID.B0.value:
         width_coefficient = 1.0
         depth_coefficient = 1.0
         default_size = 224
         dropout_rate = 0.2
-    elif id == VersionID.B1:
+    elif id == VersionID.B1.value:
         width_coefficient = 1.0
         depth_coefficient = 1.1
         default_size = 240
         dropout_rate = 0.2
-    elif id == VersionID.B2:
+    elif id == VersionID.B2.value:
         width_coefficient = 1.1
         depth_coefficient = 1.2
         default_size = 260
         dropout_rate = 0.3
-    elif id == VersionID.B3:
+    elif id == VersionID.B3.value:
         width_coefficient = 1.2
         depth_coefficient = 1.4
         default_size = 300
         dropout_rate = 0.3
-    elif id == VersionID.B4:
+    elif id == VersionID.B4.value:
         width_coefficient = 1.4
         depth_coefficient = 1.8
         default_size = 380
         dropout_rate = 0.4
-    elif id == VersionID.B5:
+    elif id == VersionID.B5.value:
         width_coefficient = 1.6
         depth_coefficient = 2.2
         default_size = 456
         dropout_rate = 0.4
-    elif id == VersionID.B6:
+    elif id == VersionID.B6.value:
         width_coefficient = 1.8
         depth_coefficient = 2.6
         default_size = 528
         dropout_rate = 0.5
-    elif id == VersionID.B7:
+    elif id == VersionID.B7.value:
         width_coefficient = 2.0
         depth_coefficient = 3.1
         default_size = 600
@@ -140,12 +137,10 @@ def efficientnet_factory(
         output_shape=output_shape,
         weight_links=weight_links,
         optimizer=optimizer,
-        loss=loss.metrics,
+        loss=loss,
         metrics=metrics,
-        normalization=normalization,
         log_path=log_path,
         ckpt_path=ckpt_path,
-        parallel=parallel,
         layer_prefix=layer_prefix)
 
 
@@ -321,7 +316,7 @@ class EfficientNet(model.Model):
             epsilon=self._batch_norm_epsilon)(x)
         x = sw.Swish()(x)
 
-        if len(self._block_args) > 0:
+        if self._block_args is not None and len(self._block_args) > 0:
             num_blocks = sum([block_args.num_repeat for block_args in self._block_args])
             drop_connect_rate_per_block = self._drop_connect_rate / float(num_blocks)
 
