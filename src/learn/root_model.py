@@ -135,11 +135,11 @@ class Model:
         """
         return self._output_shape
 
-    def get_input_shape(self, data_type):
+    def get_input_shape(self):
         """ Returns the input shape.
         :return: shape
         """
-        return self._input_shape[data_type]
+        return self._input_shape
 
     def save(self, path, protocol_buffer=False):
         """ Saves the learn.
@@ -380,7 +380,7 @@ class Model:
         if not isinstance(img, np.ndarray):
             raise TypeError("Unable to predict type {}".format(type(img)))
         prediction = self._model.predict(np.array([img, ]))
-        return prediction[0][0]
+        return prediction#[0][0]
 
     def print(self):
         """ Prints the current learn setup in the console
