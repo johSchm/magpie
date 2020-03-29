@@ -65,8 +65,10 @@ def efficientnet_factory(
         metrics=utils.Metrics.SPARSE_CAT_ACCURACY.value,
         log_path=None,
         ckpt_path=None,
+        include_top=True,
         layer_prefix=""):
     """ Init. method.
+    :param include_top: (bool) Include top layers.
     :param layer_prefix: (str) Add this prefix to ALL layer names.
     :param weight_links: (dict) This dictionary contains the link to the weights.
     :param input_shape: (list) Input shape of the input data (W x H x D).
@@ -130,6 +132,7 @@ def efficientnet_factory(
                          " has to be {0} and not the size contained in {1}!"
                          .format(default_size, input_shape))
     return EfficientNet(
+        include_top=include_top,
         dropout_rate=dropout_rate,
         width_coefficient=width_coefficient,
         depth_coefficient=depth_coefficient,
@@ -217,6 +220,7 @@ class EfficientNet(model.Model):
                  batch_norm_epsilon=DEFAULT_BATCH_NORM_EPSILON,
                  drop_connect_rate=DEFAULT_DROP_CONNECT_RATE,
                  dropout_rate=DEFAULT_DROPOUT_RATE,
+                 include_top=True,
                  **kwargs):
         """ Init. method.
         :param data_format (list): The format of the image shape.
@@ -236,6 +240,7 @@ class EfficientNet(model.Model):
         :param batch_norm_epsilon (float):
         :param drop_connect_rate (float):
         :param dropout_rate (float):
+        :param include_top (bool): Include top layers.
         """
         super().__init__(
             input_shape=input_shape,
@@ -247,7 +252,7 @@ class EfficientNet(model.Model):
         self._batch_norm_epsilon = DEFAULT_BATCH_NORM_EPSILON
         self._drop_connect_rate = DEFAULT_DROP_CONNECT_RATE
         self._block_args = []
-        self._include_top = True
+        self._include_top = include_top
         self._dropout_rate = dropout_rate
         self._block_args = block_args if block_args is not None else bargs.get_default_blockargs()
         self._width_coefficient = width_coefficient
