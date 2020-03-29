@@ -71,29 +71,16 @@ class VersionID(Enum):
 
 
 def get_compound_coeff_func(phi=1.0, max_cost=2.0):
-    """
-    Cost function from the EfficientNets paper
-    to compute candidate values for alpha, beta
+    """ Cost function from the EfficientNets paper to compute candidate values for alpha, beta
     and gamma parameters respectively.
 
-    These values are then used to train models,
-    and the validation accuracy is used to select
+    These values are then used to train models, and the validation accuracy is used to select
     the best base parameter set at phi = 1.
 
-    # Arguments:
-        phi: The base power of the parameters. Kept as 1
-            for initial search of base parameters.
-        max_cost: The maximum cost of permissible. User
-            defined constant generally set to 2.
-
-    # Returns:
-        A function which accepts a numpy vector of 3 values,
-        and computes the mean squared error between the
-        `max_cost` value and the cost computed as
-        `cost = x[0] * (x[1] ** 2) * (x[2] ** 2)`.
-
-    # References:
-        - [EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks](https://arxiv.org/abs/1905.11946)
+    :param phi: (float) The base power of the parameters. Kept as 1 for initial search of base parameters.
+    :param max_cost: (float) The maximum cost of permissible. User defined constant generally set to 2.
+    :return A function which accepts a numpy vector of 3 values, and computes the mean squared error between the
+            `max_cost` value and the cost computed as `cost = x[0] * (x[1] ** 2) * (x[2] ** 2)`.
     """
     def compound_coeff(x, phi=phi, max_cost=max_cost):
         depth = alpha = x[0]
@@ -114,8 +101,16 @@ def get_compound_coeff_func(phi=1.0, max_cost=2.0):
 
 def _sequential_optimize(param_grid, param_set, loss_func,
                          num_coeff, ineq_constraints, verbose):
+    """
+    :param param_grid:
+    :param param_set:
+    :param loss_func:
+    :param num_coeff:
+    :param ineq_constraints:
+    :param verbose:
+    :return:
+    """
     param_holder = np.empty((num_coeff,))
-
     for ix, param in enumerate(param_grid):
         # create a vector for the cost function and minimise using SLSQP
         for i in range(num_coeff):
@@ -123,15 +118,20 @@ def _sequential_optimize(param_grid, param_set, loss_func,
         x0 = param_holder
         res = minimize(loss_func, x0, method='SLSQP', constraints=ineq_constraints)
         param_set[ix] = res.x
-
         if verbose:
             if (ix + 1) % 1000 == 0:
                 print("Computed {:6d} parameter combinations...".format(ix + 1))
-
     return param_set
 
 
 def _joblib_optimize(param, loss_func, num_coeff, ineq_constraints):
+    """ Minimizes the loss function for given parameters.
+    :param param:
+    :param loss_func:
+    :param num_coeff:
+    :param ineq_constraints:
+    :return: results
+    """
     x0 = np.asarray([param[i] for i in range(num_coeff)])
     res = minimize(loss_func, x0, method='SLSQP', constraints=ineq_constraints)
     return res.x
@@ -140,47 +140,33 @@ def _joblib_optimize(param, loss_func, num_coeff, ineq_constraints):
 def optimize_coefficients(num_coeff=3, loss_func=None, phi=1.0, max_cost=2.0,
                           search_per_coeff=4, sort_by_loss=False, save_coeff=True,
                           tol=None, verbose=True):
-    """
-    Computes the possible values of any number of coefficients,
-    given a cost function, phi and max cost permissible.
+    """ Computes the possible values of any number of coefficients, given a cost function, phi and max cost permissible.
 
-    Takes into account the search space per coefficient
-    so that the subsequent grid search does not become
+    Takes into account the search space per coefficient so that the subsequent grid search does not become
     prohibitively large.
 
-    # Arguments:
-        num_coeff: number of coefficients that must be optimized.
-        cost_func: coefficient cost function that minimised to
-            satisfy the least squares solution. The function can
-            be user defined, in which case it must accept a numpy
-            vector of length `num_coeff` defined above. It is
-            suggested to use MSE against a pre-refined `max_cost`.
-        phi: The base power of the parameters. Kept as 1
-            for initial search of base parameters.
-        max_cost: The maximum cost of permissible. User
-            defined constant generally set to 2.
-        search_per_coeff: int declaring the number of values tried
-            per coefficient. Constructs a search space of size
-            `search_per_coeff` ^ `num_coeff`.
-        sort_by_loss: bool. Whether to sort the result set by its loss
-            value, in order of lowest loss first.
-        save_coeff: bool, whether to save the resulting coefficients
-            into the file `param_coeff.npy` in current working dir.
-        tol: float tolerance of error in the cost function. Used to
-            select candidates which have a cost less than the tolerance.
-        verbose: bool, whether to print messages during execution.
-
-    # Returns:
-        A numpy array of shape [search_per_coeff ^ num_coeff, num_coeff],
-        each row defining the value of the coefficients which minimise
-        the cost function satisfactorily (to some machine precision).
+    :param num_coeff: number of coefficients that must be optimized.
+    :param cost_func: coefficient cost function that minimised to satisfy the least squares solution. The function can
+            be user defined, in which case it must accept a numpy vector of length `num_coeff` defined above.
+            It is suggested to use MSE against a pre-refined `max_cost`.
+    :param phi: The base power of the parameters. Kept as 1 for initial search of base parameters.
+    :param max_cost: The maximum cost of permissible. User defined constant generally set to 2.
+    :param search_per_coeff: int declaring the number of values tried per coefficient. Constructs a search space
+            of size `search_per_coeff` ^ `num_coeff`.
+    :param sort_by_loss: bool. Whether to sort the result set by its loss value, in order of lowest loss first.
+    :param save_coeff: bool, whether to save the resulting coefficients into the file
+           `param_coeff.npy` in current working dir.
+    :param tol: float tolerance of error in the cost function. Used to select candidates which have a cost
+             less than the tolerance.
+    :param verbose: bool, whether to print messages during execution.
+    :return A numpy array of shape [search_per_coeff ^ num_coeff, num_coeff], each row defining the value of the
+            coefficients which minimise the cost function satisfactorily (to some machine precision).
     """
     phi = float(phi)
     max_cost = float(max_cost)
     search_per_coeff = int(search_per_coeff)
 
-    # if user defined cost function is not provided, use the one from
-    # the paper in reference.
+    # if user defined cost function is not provided, use the one from the paper in reference.
     if loss_func is None:
         loss_func = get_compound_coeff_func(phi, max_cost)
 
@@ -194,8 +180,7 @@ def optimize_coefficients(num_coeff=3, loss_func=None, phi=1.0, max_cost=2.0,
     num_samples = search_per_coeff ** num_coeff
     param_range = [num_samples, num_coeff]
 
-    # sorted by ParameterGrid acc to its key value, assuring sorted
-    # behaviour for Python < 3.7.
+    # sorted by ParameterGrid acc to its key value, assuring sorted behaviour for Python < 3.7.
     grid = {i: np.linspace(1.0, max_cost, num=search_per_coeff)
             for i in range(num_coeff)}
 
@@ -222,8 +207,7 @@ def optimize_coefficients(num_coeff=3, loss_func=None, phi=1.0, max_cost=2.0,
                                          ineq_constraints=ineq_constraints,
                                          verbose=verbose)
 
-    # compute a minimum tolerance of the cost function
-    # to select it in the candidate list.
+    # compute a minimum tolerance of the cost function to select it in the candidate list.
     if tol is not None:
         if verbose:
             print("Filtering out samples below tolerance threshold...")
@@ -258,6 +242,8 @@ def optimize_coefficients(num_coeff=3, loss_func=None, phi=1.0, max_cost=2.0,
 
 
 def optimize_effnet():
+    """ Optimizes the Efficient net.
+    """
     def cost_func_wrapper(phi=1.0, max_cost=2.0):
         def cost_func(x: np.ndarray, phi=phi, max_cost=max_cost) -> float:
             depth = x[0] ** phi
