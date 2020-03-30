@@ -20,6 +20,7 @@ import tensorflow.keras.backend as K
 
 class ArcFaceLayer(Layer):
     """ The ArcFace layer.
+    Implements the additive angular margin loss, proposed in the paper.
     """
 
     def __init__(self, n_classes=10, s=30.0, m=0.50, regularizer=None, **kwargs):
