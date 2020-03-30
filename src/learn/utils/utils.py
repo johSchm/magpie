@@ -200,6 +200,11 @@ class WeightLinks(Enum):
         "path": "res/weights/effnet/effnetb7_notop_imagenet_weights.h5",
         "sample_size": 600
     }
+    DLIB_FACE_DETECTION_DEFAULT = {
+        "name": "dlib_face_detection_default",
+        "http": "http://arunponnusamy.com/files/mmod_human_face_detector.dat",
+        "path": "res/weights/dlibfacedetect/mmod_human_face_detector.dat",
+    }
 
 
 class Normalizations:
