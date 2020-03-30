@@ -51,6 +51,9 @@ The model settings can be found under [res/models](res/models).
 For a detailed code documentation, please refer to
 [documentation](https://rawcdn.githack.com/johSchm/magpie/master/doc/_build/html/index.html).
 
+## Troubleshooting
+Some errors and the related fixes, encountered during development, are discussed [here](./TROUBLESHOOTING.md).
+
 ## Future Development
 So, what's up next? Open issues and hence possible future features are listed in the `Issue`
 section of GitHub. If you like to participate in the development process, PRs are always
