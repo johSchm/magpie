@@ -72,7 +72,9 @@ class VersionID(Enum):
 
 def get_compound_coeff_func(phi=1.0, max_cost=2.0):
     """ Cost function from the EfficientNets paper to compute candidate values for alpha, beta
-    and gamma parameters respectively.
+    and gamma parameters respectively. All of which are used to uniformly scale the network width (beta),
+    depth (alpha), and resolution (gamma) according to to the user-specified available amount of
+    resources for the model (phi).
 
     These values are then used to train models, and the validation accuracy is used to select
     the best base parameter set at phi = 1.
@@ -83,32 +85,25 @@ def get_compound_coeff_func(phi=1.0, max_cost=2.0):
             `max_cost` value and the cost computed as `cost = x[0] * (x[1] ** 2) * (x[2] ** 2)`.
     """
     def compound_coeff(x, phi=phi, max_cost=max_cost):
-        depth = alpha = x[0]
-        width = beta = x[1]
-        resolution = gamma = x[2]
-
-        # scale by power. Phi is generally kept as 1.0 during search.
+        alpha, beta, gamma = x[0], x[1], x[2]
         alpha = alpha ** phi
         beta = beta ** phi
         gamma = gamma ** phi
-
-        # compute the cost function
         cost = alpha * (beta ** 2) * (gamma ** 2)
         return (cost - max_cost) ** 2
-
     return compound_coeff
 
 
 def _sequential_optimize(param_grid, param_set, loss_func,
                          num_coeff, ineq_constraints, verbose):
-    """
-    :param param_grid:
-    :param param_set:
-    :param loss_func:
-    :param num_coeff:
-    :param ineq_constraints:
-    :param verbose:
-    :return:
+    """ Sequential optimizer for a given parameter grid.
+    :param param_grid: (dict) The grid of parameters.
+    :param param_set: (list) The set of parameters.
+    :param loss_func: (func) The loss function for measuring the performance.
+    :param num_coeff: (int) The number of coefficients.
+    :param ineq_constraints: (dict) Inequality constraints.
+    :param verbose: (bool) Print information during calculations.
+    :return: (list) Optimized parameter set.
     """
     param_holder = np.empty((num_coeff,))
     for ix, param in enumerate(param_grid):
@@ -241,8 +236,8 @@ def optimize_coefficients(num_coeff=3, loss_func=None, phi=1.0, max_cost=2.0,
     return param_set
 
 
-def optimize_effnet():
-    """ Optimizes the Efficient net.
+def print_optimized_effnet_coeffs():
+    """ Optimizes the Efficient network and prints the results in the console.
     """
     def cost_func_wrapper(phi=1.0, max_cost=2.0):
         def cost_func(x: np.ndarray, phi=phi, max_cost=max_cost) -> float:
