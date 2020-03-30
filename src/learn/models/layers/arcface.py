@@ -30,7 +30,7 @@ class ArcFaceLayer(Layer):
         :param regularizer: (Regularizer) The regularizer.
         :param kwargs:
         """
-        super(ArcFace, self).__init__(**kwargs)
+        super(ArcFaceLayer, self).__init__(**kwargs)
         self.n_classes = n_classes
         self.s = s
         self.m = m
@@ -40,7 +40,7 @@ class ArcFaceLayer(Layer):
         """ Builds the layer with its weights.
         :param input_shape: (list) The input shape.
         """
-        super(ArcFace, self).build(input_shape[0])
+        super(ArcFaceLayer, self).build(input_shape[0])
         self.W = self.add_weight(name='W',
                                 shape=(input_shape[0][-1], self.n_classes),
                                 initializer='glorot_uniform',
