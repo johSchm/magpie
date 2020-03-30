@@ -29,9 +29,16 @@ The following system configurations has been tested for deployment:
 
 ## Implementation
 This framework uses state-of-the-art machine learning tools to classify objects within images.
-One of those is the EfficientNet [[1]](#references), which reached state-of-the-art performances
-on the popular image classification benchmark dataset ImageNet [[2, 3]](#references).
+
+### Image Classification
+One of those is the *EfficientNet* [[1]](#references), which reached state-of-the-art performances
+on the popular image classification benchmark dataset *ImageNet* [[2, 3]](#references).
 The implementation of the related model was highly inspired by [[4, 5]](#references).
+
+### Face Recognition
+*ArcFace* [[6]](#references). is a novel approach for deep face recognition. This method reached state-of-the-art performances
+on well-known face databases, like LFW [[7, 8]](#references). Note that, for the implementation, the code
+from [[9]](#references) has been used.
 
 ## Configurations
 All user-adjustable settings are located in [res](res).
@@ -56,3 +63,7 @@ yet unknown bugs, then just let me know.
 - [3] https://paperswithcode.com/sota/image-classification-on-imagenet
 - [4] https://github.com/tensorflow/tpu/tree/master/models/official/efficientnet
 - [5] https://github.com/titu1994/keras-efficientnets
+- [6] https://arxiv.org/abs/1801.07698
+- [7] http://vis-www.cs.umass.edu/lfw/
+- [8] https://paperswithcode.com/sota/face-verification-on-labeled-faces-in-the
+- [9] https://github.com/4uiiurz1/keras-arcface
