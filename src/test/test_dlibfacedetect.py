@@ -7,26 +7,47 @@
 @refs:
 @todo:
 @bug:
-@brief:     Test for ArcFace.
+@brief:     Test for Dlib Face Detector.
 ------------------------------------------- """
 
 
 import unittest
-import learn.models.arcface as af
+import learn.models.dlibfacedetect as fd
+from PIL import Image
+import numpy as np
+import learn.utils.utils as utils
 
 
-class TestArcFaceNetPureTop(unittest.TestCase):
-    """ Test for ArcFace without weights and with top included.
+class TestDlibFaceDetectorHOG(unittest.TestCase):
+    """ Test for Dlib Face Detector HOG-based.
     """
 
-    def test_construction_top(self):
-        """ Construction test of the ArcFace model.
+    def test_prediction(self):
+        """ Construction the model and test it with an example image.
         """
-        model = af.ArcFace(
-            input_shape=[224, 224, 3],
-            output_shape=[10],
-            include_top=True)
-        self.assertEqual(type(model), af.ArcFace)
+        model = fd.DlibHOGFaceDetector()
+        with self.subTest():
+            self.assertEqual(type(model), fd.DlibHOGFaceDetector)
+        with self.subTest():
+            img = Image.open("../../res/dataset/test_image_barack_obama.jpg")
+            pred = model.apply(np.array(img))
+            self.assertEqual(len(pred), 1)
+
+
+class TestDlibFaceDetectorCNN(unittest.TestCase):
+    """ Test for Dlib Face Detector CNN-based.
+    """
+
+    def test_prediction(self):
+        """ Construction the model and test it with an example image.
+        """
+        model = fd.DlibCNNFaceDetector(utils.WeightLinks.DLIB_FACE_DETECTION_DEFAULT)
+        with self.subTest():
+            self.assertEqual(type(model), fd.DlibCNNFaceDetector)
+        with self.subTest():
+            img = Image.open("../../res/dataset/test_image_barack_obama.jpg")
+            pred = model.apply(np.array(img))
+            self.assertEqual(len(pred), 1)
 
 
 if __name__ == '__main__':

@@ -67,7 +67,7 @@ class DlibCNNFaceDetector:
         :return: (str) weights path
         """
         if type(self._weight_links) is utils.WeightLinks:
-            weight_links = self._weight_links.value
+            self._weight_links = self._weight_links.value
         path = os.path.join(path_utils.get_root_path(), self._weight_links['path'])
         if not os.path.isfile(path):
             utils.download_weights(self._weight_links)
