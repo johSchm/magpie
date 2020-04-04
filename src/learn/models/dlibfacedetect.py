@@ -10,6 +10,8 @@
 @brief:      The face detector by dlib.
 ------------------------------------------- """
 
+
+import PIL
 import cv2
 import dlib
 import argparse
@@ -17,6 +19,26 @@ import time
 import learn.utils.utils as utils
 import os
 import utils.path_utils as path_utils
+from PIL import Image
+
+
+def crop_face(image, bbox) -> Image:
+    """ Crops the face from the original image.
+    :param image: original image
+    :param bbox: bounding box of the face
+    :return: the modified image
+    """
+    if type(image) is not Image.Image and type(image) is not PIL.JpegImagePlugin.JpegImageFile:
+        raise TypeError("Pillow image required! Got instead " + str(type(image)))
+    if type(bbox) is not dlib.rectangles:
+        raise TypeError("Bounding box needs to be a dlib.rectangles! Got instead " + str(type(bbox)))
+    if len(bbox) <= 0:
+        raise ValueError("Bounding Box is empty!")
+    for bb in bbox:
+        area = (bb.left(), bb.top(), bb.right(), bb.bottom())
+        cropped_img = image.crop(area)
+        cropped_img.show()
+        pass
 
 
 class DlibHOGFaceDetector:
