@@ -20,13 +20,45 @@ import learn.utils.utils as utils
 import os
 import utils.path_utils as path_utils
 from PIL import Image
+import numpy as np
+from tqdm import tqdm
 
 
-def crop_face(image, bbox) -> Image:
+def crop_all_faces(src_path, dst_path, detector):
+    """ Crops all faces for all images within a given path.
+    :param src_path: (str) The source path to the original images.
+    :param dst_path: (str) The destination path to the cropped images.
+    :param detector: The face detector.
+    """
+    if type(src_path) is not str:
+        raise TypeError("The source path needs to be a string! Got {} instead!".format(type(src_path)))
+    if type(dst_path) is not str:
+        raise TypeError("The destination path needs to be a string! Got {} instead!".format(type(dst_path)))
+    if not os.path.exists(src_path):
+        raise ValueError("The provided source path does not exist! Provided path {}.".format(src_path))
+    if not os.path.exists(dst_path):
+        print("Destination path {} does not exist. Creating required directory ...")
+        os.mkdir(dst_path)
+    if type(detector) is not DlibHOGFaceDetector and type(detector) is not DlibCNNFaceDetector:
+        raise TypeError("The detector needs to be either {0} or {1}, but got {2} instead!".
+                        format(DlibHOGFaceDetector, DlibCNNFaceDetector, type(detector)))
+    for image_id, image_name in enumerate(tqdm(os.listdir(src_path))):
+        image_src_path = os.path.join(src_path, image_name)
+        src_image = Image.open(image_src_path)
+        face_bbox = detector.apply(np.array(src_image))
+        if len(face_bbox) > 0:
+            dst_images = crop_face(src_image, face_bbox)
+            for face_id, dst_image in enumerate(dst_images):
+                image_dst_path = os.path.join(dst_path, str(image_id) + "_" + str(face_id) + ".jpeg")
+                dst_image.save(image_dst_path)
+        src_image.close()
+
+
+def crop_face(image, bbox) -> list:
     """ Crops the face from the original image.
     :param image: original image
     :param bbox: bounding box of the face
-    :return: the modified image
+    :return: the modified image list
     """
     if type(image) is not Image.Image and type(image) is not PIL.JpegImagePlugin.JpegImageFile:
         raise TypeError("Pillow image required! Got instead " + str(type(image)))
@@ -34,11 +66,12 @@ def crop_face(image, bbox) -> Image:
         raise TypeError("Bounding box needs to be a dlib.rectangles! Got instead " + str(type(bbox)))
     if len(bbox) <= 0:
         raise ValueError("Bounding Box is empty!")
+    cropped_faces = []
     for bb in bbox:
         area = (bb.left(), bb.top(), bb.right(), bb.bottom())
         cropped_img = image.crop(area)
-        cropped_img.show()
-        pass
+        cropped_faces.append(cropped_img)
+    return cropped_faces
 
 
 class DlibHOGFaceDetector:

@@ -6,6 +6,4 @@ import learn.utils.utils as utils
 
 
 model = fd.DlibHOGFaceDetector()
-img = Image.open("../../res/dataset/test_image_barack_obama.jpg")
-pred = model.apply(np.array(img))
-fd.crop_face(img, pred)
+fd.crop_all_faces("/run/media/jay/4EFC223FFC2221A7/dataset", "/run/media/jay/4EFC223FFC2221A7/faces", model)
