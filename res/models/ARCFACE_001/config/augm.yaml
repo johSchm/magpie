@@ -1,0 +1,10 @@
+--- # Data augmentation parameters.
+
+crop_fraction: [0.6, 0.95]
+rotation: null
+flip: 0
+hue: [0.1, 0.4]
+saturation: [0.1, 1.0]
+brightness: 0.5
+contrast: [0.1, 1.0]
+augmentation_rate: 2.0
