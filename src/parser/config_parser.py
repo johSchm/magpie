@@ -55,3 +55,12 @@ class ConfigParser:
             else:
                 content = additional
         return content
+
+    def get_full_path(self, folder: str) -> str:
+        """ Concatenates the full path for the specified config folder.
+        :param folder: The specific folder.
+        :return: The absolute path.
+        """
+        content = yaml.read(self._path)
+        full_path = os.path.join(self._config_root_path, content["key"], folder)
+        return full_path

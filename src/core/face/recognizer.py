@@ -33,7 +33,9 @@ class FaceRecognizer:
         self._classes = self._config_parser.read(key="class_path")
         self._model = af.ArcFace(
             input_shape=self._hyper_param["input_shape"],
-            output_shape=[len(self._classes)]
+            output_shape=[len(self._classes)],
+            log_path=self._config_parser.get_full_path(self._base_config["log_path"]),
+            ckpt_path=self._config_parser.get_full_path(self._base_config["checkpoint_path"])
         )
 
     @staticmethod
@@ -65,4 +67,7 @@ class FaceRecognizer:
             self._parse_function, [x, self._hyper_param["input_shape"][:-1]], [tf.float32, tf.int8]),
             num_parallel_calls=tf.data.experimental.AUTOTUNE)
         self._model.print()
-        self._model.train(dataset, validation_db=dataset, batch_size=4)
+        self._model.train(
+            dataset, validation_db=dataset, batch_size=2,
+            class_catalog=list(self._classes.values()),
+            batch_generator=af.generator_batch)
