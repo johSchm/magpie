@@ -77,3 +77,18 @@ class FaceRecognizer:
             batch_size=self._hyper_param["batch_size"],
             class_catalog=list(self._classes.values()),
             batch_generator=af.generator_batch)
+
+    def predict(self, ckpt_name: str, data_path: str) -> list:
+        """ Predicts the label of a specific sample.
+        :param data_path: (str) The path to the data, employed for prediction.
+        :return (list) The predicted labels.
+        """
+        ckpt_path = self._config_parser.get_full_path(self._base_config["checkpoint_path"])
+        ckpt_path = os.path.join(ckpt_path, ckpt_name)
+        self._model.load(ckpt_path)
+        labels = []
+        for sample in os.listdir(data_path):
+            img = Image.open(os.path.join(data_path, sample))
+            label = self._model.predict(img)
+            labels.append(label)
+        return labels

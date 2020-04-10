@@ -164,22 +164,28 @@ class Model:
             frozen_graph = convert_variables_to_constants(session, input_graph_def, output_names, freeze_var_names)
             return frozen_graph
 
-    def load(self, path, protocol_buffer=False):
+    def load(self, ckpt_path: str, protocol_buffer=False):
         """ Saves the learn.
-        :param path
+        :param ckpt_path: (str) The name of the checkpoint.
         :param protocol_buffer
-        :return protocol_buffer = False: learn
+        :return protocol_buffer = False: model
                 protocol_buffer = True:  graph
+        :raises ValueError if the data_path is not a string.
+                FileNotFoundError if the concatenate checkpoint path does not exist.
         """
         if protocol_buffer:
             with Session() as sess:
-                with gfile.FastGFile(os.path.join(path, 'learn'), 'rb') as file:
+                with gfile.FastGFile(os.path.join(ckpt_path, 'learn'), 'rb') as file:
                     graph_def = GraphDef()
                     graph_def.ParseFromString(file.read())
                     sess.graph.as_default()
                     return tf.import_graph_def(graph_def)
         else:
-            self._model = tf.keras.models.load_model(path)
+            if type(ckpt_path) is not str:
+                raise ValueError("The provided path is not a string, instead got {}".format(type(ckpt_path)))
+            if os.path.exists(ckpt_path):
+                raise FileNotFoundError("Not file found under {}!".format(ckpt_path))
+            self._model = tf.keras.models.load_model(ckpt_path)
             return self._model
 
     def train(self, dataset, batch_generator=None, class_catalog=None, validation_db=None,
