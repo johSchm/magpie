@@ -27,6 +27,20 @@ import numpy as np
 DEFAULT_WEIGHT_DECAY = 1e-4
 
 
+def generator_batch(db, categories):
+    """ A generator for ArcFace training and validation batches.
+    :param categories: The list of all categories.
+    :param db: The dataset.
+    :return (yield) data
+    """
+    while True:
+        for data in db:
+            imgs = np.array([item for item in data[0]])
+            labels = np.array([item for item in data[1]])
+            label_dict = np.array([categories for _ in range(len(data[1]))])
+            yield [imgs, label_dict], labels
+
+
 class ArcFace(model.Model):
     """ The ArcFace network.
     """

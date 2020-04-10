@@ -3,7 +3,7 @@
 
 """ -------------------------------------------
 author:     Johann Schmidt
-date:       October 2019
+date:       2020
 refs:
 todo:
 ------------------------------------------- """
@@ -31,6 +31,11 @@ import utils.data_utils as data_utils
 import matplotlib.pyplot as plt
 from PIL import Image
 import learn.gpu.hvd_wrapper as hvd
+
+
+DEFAULT_NUMBER_OF_EPOCHS = 2
+DEFAULT_BATCH_SIZE = 2
+DEFAULT_NUMBER_OF_VALIDATION_STEPS = 10
 
 
 def dummy_model():
@@ -77,10 +82,9 @@ class Model:
             metrics=[metrics],
             experimental_run_tf_function=False)
 
-    def _load_weights(self, weight_links):
+    def _load_weights(self, weight_links: dict):
         """ Loads pre-trained weights from the path.
-        Args:
-            weight_links (dict):
+        :param weight_links (dict):
                 {
                     path (str): Path to weight file.
                     http (str): Online link to weights for download.
@@ -92,25 +96,6 @@ class Model:
         if not os.path.isfile(path):
             utils.download_weights(weight_links)
         self._model.load_weights(path)
-
-    @staticmethod
-    def get_norm_layer(norm, previous_layer=None):
-        """ Returns the normalization layer.
-        :param norm:
-        :param previous_layer:
-        :return: layer
-        """
-        layer = None
-        if norm == utils.Normalizations.BATCH_NORM or norm == utils.Normalizations.BATCH_NORM:
-            layer = BatchNormalization(
-                axis=-1, momentum=0.99, epsilon=0.001,
-                center=True, scale=True, beta_initializer='zeros',
-                gamma_initializer='ones', moving_mean_initializer='zeros',
-                moving_variance_initializer='ones', beta_regularizer=None,
-                gamma_regularizer=None, beta_constraint=None, gamma_constraint=None)
-        if layer is None:
-            return previous_layer
-        return layer(previous_layer)
 
     def clear(self):
         """ Empties the models reference.
@@ -149,7 +134,7 @@ class Model:
         if self._model is not None and path is not None:
             if protocol_buffer:
                 frozen_graph = self._freeze_session(
-                    backend.get_session(), output_names=[out.op.name for out in self.model.outputs])
+                    backend.get_session(), output_names=[out.op.name for out in self._model.outputs])
                 tf.io.write_graph(frozen_graph, path, 'learn', as_text=False)
             else:
                 if not os.path.exists(os.path.dirname(path)):
@@ -197,19 +182,27 @@ class Model:
             self._model = tf.keras.models.load_model(path)
             return self._model
 
-    def train(self, dataset, validation_db=None,
-              epochs=3, batch_size=32, validation_split=0.3,
-              steps_per_epoch=None, dataset_path=None, rnd_sample_frame=False):
+    def train(self, dataset, batch_generator=None, class_catalog=None, validation_db=None,
+              epochs=DEFAULT_NUMBER_OF_EPOCHS, batch_size=DEFAULT_BATCH_SIZE,
+              steps_per_epoch=None, dataset_path=None,
+              validation_steps=DEFAULT_NUMBER_OF_VALIDATION_STEPS):
         """ Start training phase.
         :param dataset: TF database
-        :param validation_db:
-        :param epochs: number of epochs
-        :param batch_size
-        :param validation_split
-        :param steps_per_epoch
-        :param dataset_path:
-        .param rnd_sample_frame:
+        :param batch_generator: A specific data batch generator for the training and validation data.
+                                With the form: batch_generator(dataset, class_catalog) -> batch
+        :param validation_db: The validation dataset.
+        :param class_catalog: A list of all classes.
+        :param epochs: Number of epochs
+        :param batch_size: The batch size.
+        :param validation_steps: Number of validation steps.
+        :param steps_per_epoch: The number of steps per epoch.
+                                If None, then the value will be estimated automatically.
+        :param dataset_path: The path to the dataset.
+                             Only required, if data samples need to be loaded during generation.
+        :raises ValueError if the provided dataset is None.
         """
+        if dataset is None:
+            raise ValueError("The dataset is None!")
         if steps_per_epoch is None:
             if dataset_path is not None:
                 steps_per_epoch = self._auto_compute_spe(ds_path=dataset_path, batch_size=batch_size)
@@ -220,24 +213,19 @@ class Model:
             epochs = hvd.wrap_epochs(epochs)
             if validation_db is not None:
                 validation_db = hvd.wrap_dataset(validation_db)
-        dataset = dataset.batch(batch_size)#.shuffle(32)
+        dataset = dataset.batch(batch_size)
         if validation_db is not None:
-            validation_db = validation_db.batch(batch_size)#.shuffle(32)
-        generator = self.generator_batch(dataset, [0,1,2])
-        val_gen = self.generator_batch(validation_db, [0,1,2])
-        d = next(generator)
-        e = next(val_gen)
-        try:
-            print("Training input shape:\t" + str(d[0].shape) + " and " + str(d[1].shape))
-            print("Validation input shape:\t" + str(e[0].shape) + " and " + str(e[1].shape))
-        except:
-            print("Unable to show shape ...")
-        #image_utils.show(d[0][0][12].numpy(), cv=False, title=str(d[1][0].numpy()))
-        #image_utils.show(d[0][1][12].numpy(), cv=False, title=str(d[1][1].numpy()))
+            validation_db = validation_db.batch(batch_size)
+        if batch_generator is not None:
+            train_gen = batch_generator(dataset, class_catalog)
+            val_gen = batch_generator(validation_db, class_catalog)
+        else:
+            train_gen = self.generator_batch(dataset)
+            val_gen = self.generator_batch(validation_db)
         self._model.fit(
-            generator, epochs=epochs,
+            train_gen, epochs=epochs,
             steps_per_epoch=steps_per_epoch, callbacks=self._callbacks,
-            validation_data=val_gen, validation_steps=10)
+            validation_data=val_gen, validation_steps=validation_steps)
 
     @staticmethod
     def _auto_compute_spe(batch_size, dataset=None, ds_path=None):
@@ -260,18 +248,16 @@ class Model:
         return int(steps_per_epoch)
 
     @staticmethod
-    def generator_batch(db, categories):
-        """ A generator for datasets.
-        :param db:
+    def generator_batch(db):
+        """ A generator for generic batches.
+        :param db: The dataset.
         :return (yield) data
         """
-        # todo move these specific generators to the model impl
         while True:
             for data in db:
-                imgs = np.array([item for item in data[0]])
+                samples = np.array([item for item in data[0]])
                 labels = np.array([item for item in data[1]])
-                label_dict = np.array([categories for _ in range(len(data[1]))])
-                yield [imgs, label_dict], labels
+                yield samples, labels
 
     @staticmethod
     def generator(db):
