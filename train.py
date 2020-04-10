@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """ -------------------------------------------
-author:     Johann Schmidt
-date:       October 2019
+@author:     Johann Schmidt
+@date:       2020
+@refs:
+@todo:
+@bug:
+@brief:     Train the models.
 ------------------------------------------- """
 
 
@@ -58,7 +62,7 @@ for model_config_idx in range(len(master_file)):
     from learn import learner as lrn
     from prepro import preprocessing as pro
     import data.data_utils as utils
-    import inout.storage as store
+    import parser.storage as store
     import data.sample as sample
     import os
     import learn.model.model_utils as model_utils

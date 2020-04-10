@@ -15,18 +15,16 @@ import yaml
 import os
 
 
-def read(path: str) -> str:
+def read(path: str) -> dict:
     """ Reads a yaml file and returns the content.
     :param path: (str) The path to the yaml file.
-    :return: The content string.
+    :return: The content dict.
+    :raises yaml.YAMLError if yaml file not valid.
     """
     if not os.path.exists(path):
         raise FileNotFoundError("The file does not exist! Passed path {}".format(path))
     content = ""
     with open(path, 'r') as stream:
-        try:
-            content = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+        content = yaml.safe_load(stream)
     return content
 

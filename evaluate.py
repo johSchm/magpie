@@ -10,7 +10,7 @@ date:       2020
 import learn.gpu.hvd_wrapper as hvd
 from property import settingsManager as sManager
 import property.property_utils as prop_utils
-import inout.tfrecord as tfr
+import parser.tfrecord as tfr
 import argparse
 
 
@@ -60,7 +60,7 @@ for model_config_idx in range(len(master_file)):
     from learn import learner as lrn
     from prepro import preprocessing as pro
     import data.data_utils as utils
-    import inout.storage as store
+    import parser.storage as store
     import data.sample as sample
     import os
     import learn.model.model_utils as model_utils

@@ -21,6 +21,7 @@ import learn.root_model as model
 import learn.utils.utils as utils
 import learn.models.blocks.vgg as vgg
 import learn.models.layers.arcface as afl
+import numpy as np
 
 
 DEFAULT_WEIGHT_DECAY = 1e-4
@@ -75,8 +76,8 @@ class ArcFace(model.Model):
         """ Adds layers to the learn.
         :return input and output tensor
         """
-        _input = Input(shape=(28, 28, 1))
-        y = Input(shape=(10,))
+        _input = Input(shape=self.get_input_shape())
+        y = Input(shape=self.get_output_shape())
         x = vgg.vgg_block(_input, 16, 2)
         x = MaxPooling2D(pool_size=(2, 2))(x)
         x = vgg.vgg_block(x, 32, 2)

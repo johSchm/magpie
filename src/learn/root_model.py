@@ -223,10 +223,8 @@ class Model:
         dataset = dataset.batch(batch_size)#.shuffle(32)
         if validation_db is not None:
             validation_db = validation_db.batch(batch_size)#.shuffle(32)
-        generator = self.generator_batch(
-            dataset, channel_first=False, use_paths=False, rnd_sample_frame=rnd_sample_frame)
-        val_gen = self.generator_batch(
-            validation_db, channel_first=False, use_paths=False, rnd_sample_frame=rnd_sample_frame)
+        generator = self.generator_batch(dataset, [0,1,2])
+        val_gen = self.generator_batch(validation_db, [0,1,2])
         d = next(generator)
         e = next(val_gen)
         try:
@@ -262,43 +260,18 @@ class Model:
         return int(steps_per_epoch)
 
     @staticmethod
-    def generator_batch(db, channel_first=False, use_paths=False, rnd_sample_frame=False):
+    def generator_batch(db, categories):
         """ A generator for datasets.
         :param db:
-        :param channel_first:
-        :param use_paths:
-        :param rnd_sample_frame:
         :return (yield) data
         """
+        # todo move these specific generators to the model impl
         while True:
             for data in db:
-                if type(data) is tuple:
-                    if channel_first:
-                        yield [np.moveaxis(item[0], item[0].ndim - 1, 1) for item in data][0], data[0][1]
-                    elif use_paths:
-                        imgs = []
-                        # @todo @HACK dirty (hard coded shape)
-                        for path in data[0][0]:
-                            path = path.numpy().decode('utf-8')
-                            paths = [path_utils.join(path, str(i) + '.jpg') for i in range(24)]
-                            img = [np.array(Image.open(p).resize((224, 224))) / 255.0 for p in paths]
-                            img = np.array(img).reshape([24, 224, 224, 3])
-                            imgs.append(img)
-                        imgs = tf.convert_to_tensor(imgs, dtype=tf.float32)
-                        yield imgs, data[0][1]
-                    else:
-                        if len(list(data)) > 1:
-                            imgs = [item[0] for item in data]
-                        else:
-                            imgs = [item[0] for item in data][0]
-                        labels = data[0][1]
-                        if rnd_sample_frame:
-                            img = imgs[:, randint(0, 23)]
-                            yield ([img, imgs], labels)
-                        else:
-                            yield imgs, labels
-                else:
-                    yield data
+                imgs = np.array([item for item in data[0]])
+                labels = np.array([item for item in data[1]])
+                label_dict = np.array([categories for _ in range(len(data[1]))])
+                yield [imgs, label_dict], labels
 
     @staticmethod
     def generator(db):

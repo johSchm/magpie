@@ -60,8 +60,8 @@ def crop_face(image, bbox) -> list:
     :param bbox: bounding box of the face
     :return: the modified image list
     """
-    if type(image) is not Image.Image and type(image) is not PIL.JpegImagePlugin.JpegImageFile:
-        raise TypeError("Pillow image required! Got instead " + str(type(image)))
+    #if type(image) is not PIL:
+    #    raise TypeError("Pillow image required! Got instead " + str(type(image)))
     if type(bbox) is not dlib.rectangles:
         raise TypeError("Bounding box needs to be a dlib.rectangles! Got instead " + str(type(bbox)))
     if len(bbox) <= 0:

@@ -1,5 +1,5 @@
 --- # This is the super-configuration file, which incorporates the sub-configuration files.
-key: EFFNET_001
+key: ARCFACE_001
 
 # paths
 augmentation_path: config/augm.yaml
@@ -14,5 +14,5 @@ model_path: model
 gpu: 0
 
 # model
-model_name: effnetb7
+model_name: arcface
 model_format: .h5

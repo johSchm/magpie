@@ -12,7 +12,7 @@ import property.settingsManager as sManager
 import prepro.preprocessing as pro
 import data.data_utils as data_utils
 import data.sample as sample
-import inout.storage as store
+import parser.storage as store
 import utils.path_utils as path_utils
 
 
