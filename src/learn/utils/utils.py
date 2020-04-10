@@ -246,7 +246,7 @@ def get_weight_dict(weight_name, checkpoint_path=None):
         raise ValueError("Weight name not found. See @WeightLinks")
 
 
-def init_optimizer(optimizer_dict):
+def instantiate_optimizer(optimizer_dict):
     """ Initiates an optimizer object based on an optimizer dictionary.
     :param optimizer_dict:
     :return: optimizer

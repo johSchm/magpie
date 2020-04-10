@@ -37,6 +37,19 @@ class ArcFaceLayer(Layer):
         self.m = m
         self.regularizer = regularizers.get(regularizer)
 
+    def get_config(self):
+        """ Override the get_config method.
+        :return: config
+        """
+        config = super().get_config().copy()
+        config.update({
+            'n_classes': self.n_classes,
+            's': self.s,
+            'm': self.m,
+            'regularizer': self.regularizer
+        })
+        return config
+
     def build(self, input_shape):
         """ Builds the layer with its weights.
         :param input_shape: (list) The input shape.

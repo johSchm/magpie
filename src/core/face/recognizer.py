@@ -17,6 +17,7 @@ import tensorflow as tf
 import os
 import numpy as np
 from PIL import Image
+import learn.utils.utils as utils
 
 
 class FaceRecognizer:
@@ -35,7 +36,10 @@ class FaceRecognizer:
             input_shape=self._hyper_param["input_shape"],
             output_shape=[len(self._classes)],
             log_path=self._config_parser.get_full_path(self._base_config["log_path"]),
-            ckpt_path=self._config_parser.get_full_path(self._base_config["checkpoint_path"])
+            ckpt_path=self._config_parser.get_full_path(self._base_config["checkpoint_path"]),
+            optimizer=utils.instantiate_optimizer(self._hyper_param["optimizer"]),
+            metrics=utils.get_metric_key(self._hyper_param["metrics"]),
+            loss=utils.get_loss_func(self._hyper_param["loss"]),
         )
 
     @staticmethod
@@ -68,6 +72,8 @@ class FaceRecognizer:
             num_parallel_calls=tf.data.experimental.AUTOTUNE)
         self._model.print()
         self._model.train(
-            dataset, validation_db=dataset, batch_size=2,
+            dataset, validation_db=dataset,
+            epochs=self._hyper_param["epochs"],
+            batch_size=self._hyper_param["batch_size"],
             class_catalog=list(self._classes.values()),
             batch_generator=af.generator_batch)

@@ -222,7 +222,6 @@ class Model:
         else:
             train_gen = self.generator_batch(dataset)
             val_gen = self.generator_batch(validation_db)
-        d = next(train_gen)
         self._model.fit(
             train_gen, epochs=epochs,
             steps_per_epoch=steps_per_epoch, callbacks=self._callbacks,
