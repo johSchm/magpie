@@ -36,9 +36,21 @@ on the popular image classification benchmark dataset *ImageNet* [[2, 3]](#refer
 The implementation of the related model was highly inspired by [[4, 5]](#references).
 
 ### Face Recognition
+The user can choose between the following face recognition methods:
+Either the traditional, commonly used, and default classification via the
+face_recognition [[10]](#references) library.
+Or, alternatively, state-of-the-art *ArcFace* [[6]](#references) can be employed. 
+
+#### face_recognition
+The well known Python face_recognition [[10]](#references) library.
+This method for face recognition is highly advisable for most of the users, preferring 
+a more plug-and-play nature.
+
+#### ArcFace
 *ArcFace* [[6]](#references). is a novel approach for deep face recognition. This method reached state-of-the-art performances
 on well-known face databases, like LFW [[7, 8]](#references). Note that, for the implementation, the code
-from [[9]](#references) has been used.
+from [[9]](#references) has been used. Note that this model comes untrained, thus a explicit training phase is 
+inevitable, which undeniably require some time. 
 
 ## Configurations
 All user-adjustable settings are located in [res](res).
@@ -70,3 +82,4 @@ yet unknown bugs, then just let me know.
 - [7] http://vis-www.cs.umass.edu/lfw/
 - [8] https://paperswithcode.com/sota/face-verification-on-labeled-faces-in-the
 - [9] https://github.com/4uiiurz1/keras-arcface
+- [10] https://pypi.org/project/face-recognition/
