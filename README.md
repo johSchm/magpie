@@ -14,10 +14,16 @@ Then, let *magpie* simply do the job!
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [System Requirements](#system-requirements)
+- [Usage](#usage)
 - [Implementation](#implementation)
+  - [Image Classification](#image-classification)
+  - [Face Recognition](#face-recognition)
+    - [face_recognition](#face_recognition)
+    - [ArcFace](#arcface)
 - [Configurations](#configurations)
 - [Deployment](#deployment)
 - [Documentation](#documentation)
+- [Troubleshooting](#troubleshooting)
 - [Future Development](#future-development)
 - [References](#references)
 
