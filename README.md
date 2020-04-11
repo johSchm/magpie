@@ -1,5 +1,8 @@
 # magpie
 
+**:exclamation: DISCLAIMER: NOTE THIS TOOL IS CURRENTLY UNDER DEVELOPMENT AND 
+A WORKING VERSION HAS NOT BEEN RELEASED YET :exclamation:**
+
 No time to sort your personal pictures and even when you find some time,  
 you merely sit in front of the screen contemplating a diversity of  
 folder hierarchies, which could work for you?  
@@ -64,7 +67,7 @@ For a detailed code documentation, please refer to
 [documentation](https://rawcdn.githack.com/johSchm/magpie/master/doc/_build/html/index.html).
 
 ## Troubleshooting
-Some errors and the related fixes, encountered during development, are discussed [here](./TROUBLESHOOTING.md).
+Some errors and the related fixes, encountered during development, are discussed [here](doc/readme/TROUBLESHOOTING.md).
 
 ## Future Development
 So, what's up next? Open issues and hence possible future features are listed in the `Issue`
