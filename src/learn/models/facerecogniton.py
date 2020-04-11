@@ -22,14 +22,13 @@ class FaceRecognitionWrapper:
     """ A wrapper for the face recognition library.
     """
 
-    def __init__(self, data_path: str, image_encoding="*.jpg"):
+    def __init__(self, data_path: str, file_encoding="*.jpg"):
         """ Init. method.
-        :param image_encoding (str): The encoding of the images.
+        :param file_encoding (str): The encoding of the image files.
         :param data_path (str): The path to the data.
         """
-        self._encoding = image_encoding
-        self._known_face_encodings = []
-        self._known_face_names = []
+        self._file_encoding = file_encoding
+        self._known_face_encodings = {}
         self._dirname = os.path.dirname(__file__)
         if data_path is not None:
             self._path = data_path
@@ -40,16 +39,30 @@ class FaceRecognitionWrapper:
     def _learn_faces(self):
         """ Goes through the data path images and learns the face specifics.
         """
-        list_of_files = [f for f in glob.glob(self._path + self._encoding)]
-        number_files = len(list_of_files)
-        names = list_of_files.copy()
-        for i in range(number_files):
-            globals()['image_{}'.format(i)] = face_recognition.load_image_file(list_of_files[i])
-            globals()['image_encoding_{}'.format(i)] = face_recognition.face_encodings(
-                globals()['image_{}'.format(i)])[0]
-            self._known_face_encodings.append(globals()['image_encoding_{}'.format(i)])
-            names[i] = names[i].replace("known_people/", "")
-            self._known_face_names.append(names[i])
+        for folder in os.listdir(self._path):
+            if os.path.isdir(os.path.join(self._path, folder)):
+                path = os.path.join(self._path, folder, self._file_encoding)
+                list_of_files = [f for f in glob.glob(path)]
+                encodings = []
+                for i, image_path in enumerate(list_of_files):
+                    image = face_recognition.load_image_file(list_of_files[i])
+                    try:
+                        encodings.append(face_recognition.face_encodings(image)[0])
+                    except IndexError:
+                        pass
+                    self._known_face_encodings[folder] = np.mean(encodings, axis=0)
+
+    def get_known_names(self) -> list:
+        """ Getter for all known face names.
+        :return: (list) List of all known face names.
+        """
+        return list(self._known_face_encodings.keys())
+
+    def get_known_encodings(self) -> list:
+        """ Getter for all known face encodings.
+        :return: (list) List of all known face encodings.
+        """
+        return list(self._known_face_encodings.values())
 
     def classify(self, image_path: str) -> list:
         """ Classifies the image and returns a list of all known persons involved.
@@ -69,11 +82,11 @@ class FaceRecognitionWrapper:
         face_encodings = face_recognition.face_encodings(image, face_locations)
         face_names = []
         for face_encoding in face_encodings:
-            matches = face_recognition.compare_faces(self._known_face_encodings, face_encoding)
+            matches = face_recognition.compare_faces(self.get_known_encodings(), face_encoding)
             name = "Unknown"
-            face_distances = face_recognition.face_distance(self._known_face_encodings, face_encoding)
+            face_distances = face_recognition.face_distance(self.get_known_encodings(), face_encoding)
             best_match_index = np.argmin(face_distances)
             if matches[best_match_index]:
-                name = self._known_face_names[best_match_index]
+                name = self.get_known_names()[best_match_index]
             face_names.append(name)
         return face_names
