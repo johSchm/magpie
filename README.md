@@ -30,6 +30,21 @@ The following system configurations has been tested for deployment:
 | -------------                     |:-------------:|
 | Arch Linux 5.4.26-1-lts           | 3.8.2 |
 
+## Usage
+For the framework can be employed, please make sure that
+the [system requirements](#system-requirements) are satisfied.
+That said, the tool can be executed and used by:
+```
+python magpie.py [-h] [-d] [-t] [-c]
+```
+
+| SHORT | LONG | DESCRIPTION |
+| --- | --- | --- |
+| -h | --help | Show this help message and exit.
+| -d | --data_path | The path to the data.
+| -t | --training | Initiate a new training phase.
+| -c | --classify | Classifies the data under the provided data path.
+
 ## Implementation
 This framework uses state-of-the-art machine learning tools to classify objects within images.
 

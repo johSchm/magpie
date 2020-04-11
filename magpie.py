@@ -11,12 +11,14 @@
 ------------------------------------------- """
 
 
-import cmd.arg_parse as arg_parse
-import cmd.ansi as ansi
+import src.cmd.arg_parse as arg_parse
+import src.cmd.ansi as ansi
+import colorama
 
+colorama.init()
 
 print("\n")
-print(f">> {ansi.BColors.BOLD}welcome to magpie{ansi.BColors.ENDC} <<")
+print("welcome to magpie")
 print("Created by J. Schmidt.")
 print("https://github.com/johSchm/magpie")
 print("\n")
