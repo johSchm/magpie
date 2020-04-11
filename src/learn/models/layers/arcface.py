@@ -8,7 +8,7 @@
              https://arxiv.org/abs/1801.07698
 @todo:
 @bug:
-@brief:      The arcnet model implementation.
+@brief:      The arcface model layer implementation.
 ------------------------------------------- """
 
 

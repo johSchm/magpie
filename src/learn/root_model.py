@@ -183,7 +183,7 @@ class Model:
         else:
             if type(ckpt_path) is not str:
                 raise ValueError("The provided path is not a string, instead got {}".format(type(ckpt_path)))
-            if os.path.exists(ckpt_path):
+            if not os.path.exists(ckpt_path):
                 raise FileNotFoundError("Not file found under {}!".format(ckpt_path))
             self._model = tf.keras.models.load_model(ckpt_path)
             return self._model
