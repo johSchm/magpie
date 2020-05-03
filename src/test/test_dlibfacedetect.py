@@ -29,7 +29,7 @@ class TestDlibFaceDetectorHOG(unittest.TestCase):
         with self.subTest():
             self.assertEqual(type(model), fd.DlibHOGFaceDetector)
         with self.subTest():
-            img = Image.open("../../res/dataset/test_image_barack_obama.jpg")
+            img = Image.open("../../res/dataset/test/obama/obama_000.jpg")
             pred = model.apply(np.array(img))
             self.assertEqual(len(pred), 1)
 
@@ -45,7 +45,7 @@ class TestDlibFaceDetectorCNN(unittest.TestCase):
         with self.subTest():
             self.assertEqual(type(model), fd.DlibCNNFaceDetector)
         with self.subTest():
-            img = Image.open("../../res/dataset/test_image_barack_obama.jpg")
+            img = Image.open("../../res/dataset/test/obama/obama_000.jpg")
             pred = model.apply(np.array(img))
             self.assertEqual(len(pred), 1)
 
