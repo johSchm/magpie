@@ -18,7 +18,7 @@ import os
 import glob
 
 
-class FaceRecognitionWrapper:
+class FaceRecognitionManager:
     """ A wrapper for the face recognition library.
     """
 
@@ -85,8 +85,8 @@ class FaceRecognitionWrapper:
             matches = face_recognition.compare_faces(self.get_known_encodings(), face_encoding)
             name = "Unknown"
             face_distances = face_recognition.face_distance(self.get_known_encodings(), face_encoding)
-            best_match_index = np.argmin(face_distances)
+            best_match_index = int(np.argmin(face_distances))
             if matches[best_match_index]:
-                name = self.get_known_names()[best_match_index]
-            face_names.append(name)
+                name = self.get_known_names()
+            face_names.append(name[best_match_index])
         return face_names
